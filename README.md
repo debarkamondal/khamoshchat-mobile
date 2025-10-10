@@ -1,11 +1,15 @@
 
-# Khamosh !!! 
+# Khamosh 🤫!!! 
 
-Khamosh-chat is an app where staying Khamosh 🤫 (Hindi: silent) is a sin because nobody is listening. A safe & secure world for just the two of you and nobody else. In future we aim to build even bigger worlds maybe even different unierse where you can bring in others (group chat basically 😂). So,
+Khamosh-chat is an app where staying ***Khamosh*** 🤫 (Hindi: silent) is a sin because nobody is listening.
+A safe & secure world for just the two of you and nobody else.
+In future we aim to build even bigger worlds maybe even different unierse where you can bring in others (group chat basically 😂). So,
 
 ***Ekdum Khamosh nahi rehneka !!!***
 
 This app is in it's early stages you can ofcourse check it out and report issues.
+
+Built with ❤️ in **India**, for the **world**.
 
 ## 1.  App features
 

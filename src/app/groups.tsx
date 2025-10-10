@@ -1,9 +1,10 @@
+
 import { View, Text, StyleSheet } from 'react-native';
 
 export default function Index() {
 return (
     <View style={styles.container}>
-      <Text>Tab Home</Text>
+      <Text style={styles.text}>Coming Soon !!!</Text>
     </View>
   );}
 
@@ -13,4 +14,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  text:{
+    fontSize: 28,
+    color: '#888888'
+  }
 });
