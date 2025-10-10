@@ -1,8 +1,40 @@
-# Welcome to your Expo app 👋
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+# Khamosh !!! 
 
-## Get started
+Khamosh-chat is an app where staying Khamosh 🤫 (Hindi: silent) is a sin because nobody is listening. A safe & secure world for just the two of you and nobody else. In future we aim to build even bigger worlds maybe even different unierse where you can bring in others (group chat basically 😂). So,
+
+***Ekdum Khamosh nahi rehneka !!!***
+
+This app is in it's early stages you can ofcourse check it out and report issues.
+
+## 1.  App features
+
+- [ ] One-to-one: text messages.
+- [ ] One-to-one: Audio & text.
+- [ ] Many-to-many: text messages.
+- [ ] Many-to-many: Audio & text.
+
+## 2. Technical stuff
+This is a react native secure & private cross-platform chat app built on top of Expo. 
+We will try to stick to [Signal Protocol](https://signal.org/docs/).
+
+### 2.1 Constants
+
+1. x25519 & x448 curve
+2. sha-256 or sha-512
+3. 
+### 2.2 Signal Protocol
+ 
+ - [ ] **X3DH:** for asynchronous handshakes
+ - [ ] **Double rachet:** for forward & backward secrecy
+ - [ ] **VXEdDSA:** for encryption and authentication
+
+## 3. Some future plans
+
+1. Post-quantum security
+2. Audio & Video calls (over webRTC)
+
+## 4. Get started
 
 1. Install dependencies
 
@@ -16,35 +48,12 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+## 5. License
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+I have very less idea of legal stuff but I plan to keep it open source. 
+These are my current terms:
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+1. You are free to modify and distribute.
+2. The source code must remain free (modify & redistribute) and open source.
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+**Legally:** This software comes under AGPLv3. Proper documentation will be added in future.
