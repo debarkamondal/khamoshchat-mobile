@@ -1,14 +1,7 @@
-import {
-  NativeTabs,
-  Icon,
-  Label,
-  VectorIcon,
-} from "expo-router/unstable-native-tabs";
-import { MaterialIcons as iconFont } from "@expo/vector-icons";
-
 import * as SplashScreen from "expo-splash-screen";
-// import { useEffect } from 'react';
-import connectMqttServer from "./hooks/connectMqttServer";
+import { Stack } from "expo-router";
+import useSession from "./../store/session";
+import { setColors } from "../static/colors";
 
 // Set the animation options. This is optional.
 SplashScreen.setOptions({
@@ -18,28 +11,19 @@ SplashScreen.setOptions({
 
 SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
-  const { isConnected, client } = connectMqttServer();
-  if (isConnected) SplashScreen.hide();
-  client.on("message", (topic, message) => {
-    console.log(message.toString());
-    console.log(topic.toString());
-  });
+export default function RootLayout() {
+  setColors();
+  const { isRegistered } = useSession();
+  if (!isRegistered) SplashScreen.hide();
 
   return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="index">
-        <Label>Personal</Label>
-        <Icon src={<VectorIcon family={iconFont} name="person-outline" />} />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="groups">
-        <Icon src={<VectorIcon family={iconFont} name="group" />} />
-        <Label>Groups</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="calls">
-        <Icon src={<VectorIcon family={iconFont} name="call" />} />
-        <Label>Calls</Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    <Stack>
+      <Stack.Protected guard={isRegistered}>
+        <Stack.Screen name="(protected)" options={{ headerShown: false }} />
+      </Stack.Protected>
+      <Stack.Protected guard={!isRegistered}>
+        <Stack.Screen name="signin" options={{ headerShown: false }} />
+      </Stack.Protected>
+    </Stack>
   );
 }
