@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { setItem, getItem, deleteItemAsync } from "expo-secure-store";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { ed448 } from "@noble/curves/ed448.js";
+import { ed25519 } from "@noble/curves/ed25519.js";
 import { Alert } from "react-native";
 
 type Session = {
@@ -10,15 +10,16 @@ type Session = {
     number: number;
   };
   image: string;
-  identityKey: Uint8Array[];
-  preKey: Uint8Array[];
+  iKey: { private: Uint8Array; public: Uint8Array };
+  preKey: { private: Uint8Array; public: Uint8Array };
   isRegistered: boolean;
-  // updateImage: (url)=> void
-  // updateSignedPreKey: (url)=> string
-  createSession: (
-    phone: { countryCode: string; number: number },
-    image: string,
-  ) => void;
+  initSession: (phone: {
+    countryCode: string;
+    number: number;
+  }) => Promise<{ private: Uint8Array; public: Uint8Array }>;
+  clearSession: () => Promise<void>;
+  markSessionRegistered: () => void;
+  markSessionUnregistered: () => void;
 };
 const useSession = create(
   persist<Session>(
@@ -28,13 +29,44 @@ const useSession = create(
         number: 0,
       },
       image: "",
-      identityKey: [],
-      preKey: [],
       isRegistered: false,
+      iKey: { private: new Uint8Array(), public: new Uint8Array() },
+      preKey: { private: new Uint8Array(), public: new Uint8Array() },
 
-      createSession(phone) {
-        const iKey = ed448.keygen();
-        const preKey = ed448.keygen();
+      markSessionUnregistered: () => {
+        set((state) => {
+          return {
+            ...state,
+            isRegistered: false,
+          };
+        });
+      },
+      markSessionRegistered: () => {
+        set((state) => {
+          return {
+            ...state,
+            isRegistered: true,
+          };
+        });
+      },
+      clearSession: async () => {
+        set((state) => {
+          {
+            return {
+              ...state,
+              otks: [],
+              isRegistered: false,
+              phone: { countryCode: "", number: 0 },
+              iKey: { public: new Uint8Array(), private: new Uint8Array() },
+              preKey: { public: new Uint8Array(), private: new Uint8Array() },
+            };
+          }
+        });
+      },
+      initSession: async (phone) => {
+        await deleteItemAsync("otks");
+        const iKey = ed25519.keygen();
+        const preKey = ed25519.keygen();
         if (!iKey && !preKey) {
           Alert.alert(
             "Error",
@@ -52,12 +84,22 @@ const useSession = create(
               return {
                 ...state,
                 phone,
-                identityKey: [iKey.publicKey, iKey.secretKey],
-                preKey: [iKey.publicKey, iKey.secretKey],
+                iKey: {
+                  public: iKey.publicKey,
+                  private: iKey.secretKey,
+                },
+                preKey: {
+                  public: preKey.publicKey,
+                  private: preKey.secretKey,
+                },
               };
             }
           });
         }
+        return {
+          public: iKey.publicKey,
+          private: iKey.secretKey,
+        };
       },
     }),
     {

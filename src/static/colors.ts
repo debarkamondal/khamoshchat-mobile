@@ -31,7 +31,7 @@ const requiredColors: colorGroup = {
     },
   },
   accentPrimary: {
-    ios: "systemYellow",
+    ios: "systemOrange",
     android: "@android:color/holo_orange_light",
     fallback: {
       light: "",

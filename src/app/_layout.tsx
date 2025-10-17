@@ -17,12 +17,12 @@ export default function RootLayout() {
   if (!isRegistered) SplashScreen.hide();
 
   return (
-    <Stack>
+    <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={isRegistered}>
-        <Stack.Screen name="(protected)" options={{ headerShown: false }} />
+        <Stack.Screen name="(protected)" />
       </Stack.Protected>
       <Stack.Protected guard={!isRegistered}>
-        <Stack.Screen name="signin" options={{ headerShown: false }} />
+        <Stack.Screen name="register" />
       </Stack.Protected>
     </Stack>
   );

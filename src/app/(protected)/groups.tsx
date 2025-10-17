@@ -1,21 +1,20 @@
+import StyledText from "@/src/components/StyledText";
+import { getColors } from "@/src/static/colors";
+import { View, StyleSheet } from "react-native";
 
-import { View, Text, StyleSheet } from 'react-native';
-
-export default function Index() {
-return (
+export default function Groups() {
+  const colors = getColors();
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: colors.backgroundPrimary,
+    },
+  });
+  return (
     <View style={styles.container}>
-      <Text style={styles.text}>Coming Soon !!!</Text>
+      <StyledText>Coming Soon !!!</StyledText>
     </View>
-  );}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  text:{
-    fontSize: 28,
-    color: '#888888'
-  }
-});
+  );
+}

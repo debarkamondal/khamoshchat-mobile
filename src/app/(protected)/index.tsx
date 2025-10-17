@@ -1,16 +1,20 @@
-import { View, Text, StyleSheet } from 'react-native';
+import StyledText from "@/src/components/StyledText";
+import { getColors } from "@/src/static/colors";
+import { View, StyleSheet } from "react-native";
 
 export default function Index() {
-return (
+  const colors = getColors();
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: colors.backgroundPrimary,
+    },
+  });
+  return (
     <View style={styles.container}>
-      <Text>Tab Home</Text>
+      <StyledText>Tab Home</StyledText>
     </View>
-  );}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
+  );
+}

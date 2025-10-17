@@ -6,21 +6,12 @@ import {
 } from "expo-router/unstable-native-tabs";
 import { MaterialIcons as iconFont } from "@expo/vector-icons";
 
-import * as SplashScreen from "expo-splash-screen";
 // import { useEffect } from 'react';
-import connectMqttServer from "./../../hooks/connectMqttServer";
+// import useSession from "@/src/store/session";
 
-// Set the animation options. This is optional.
-SplashScreen.setOptions({
-  duration: 1000,
-  fade: true,
-});
-
-SplashScreen.preventAutoHideAsync();
-
-export default async function TabLayout() {
-  const { isConnected } = connectMqttServer();
-  if (isConnected) SplashScreen.hide();
+export default function TabLayout() {
+  // const { markSessionUnregistered } = useSession();
+  // markSessionUnregistered();
 
   return (
     <NativeTabs>
