@@ -2,7 +2,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import StyledText from "../../components/StyledText";
 import { getColors } from "@/src/static/colors";
 import useSession from "@/src/store/session";
-import StyledButton from "@/src/components/StyledButtonInput";
+import StyledButton from "@/src/components/StyledButton";
 import OtpInput from "@/src/components/OtpInput";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { StyleSheet } from "react-native";

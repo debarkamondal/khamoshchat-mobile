@@ -5,16 +5,15 @@ import {
   VectorIcon,
 } from "expo-router/unstable-native-tabs";
 import { MaterialIcons as iconFont } from "@expo/vector-icons";
-
-// import { useEffect } from 'react';
-// import useSession from "@/src/store/session";
+import { getColors } from "@/src/static/colors";
 
 export default function TabLayout() {
-  // const { markSessionUnregistered } = useSession();
-  // markSessionUnregistered();
-
+  const colors = getColors();
   return (
-    <NativeTabs>
+    <NativeTabs
+      tintColor={colors.accentPrimary}
+      backgroundColor={colors.backgroundPrimary}
+    >
       <NativeTabs.Trigger name="index">
         <Label>Personal</Label>
         <Icon src={<VectorIcon family={iconFont} name="person-outline" />} />

@@ -1,14 +1,14 @@
 import { Alert, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import StyledStyledTextInput from "../components/StyledTextInput";
-import StyledButton from "../components/StyledButtonInput";
+import StyledStyledTextInput from "@/src/components/StyledTextInput";
+import StyledButton from "@/src/components/StyledButton";
 import { Feather } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
-import { getColors } from "../static/colors";
-import StyledText from "../components/StyledText";
+import { getColors } from "@/src/static/colors";
+import StyledText from "@/src/components/StyledText";
 import { useMemo, useState } from "react";
 import "./../polyfills/crypto";
-import useSession from "../store/session";
+import useSession from "@/src/store/session";
 
 export default function register() {
   const colors = getColors();

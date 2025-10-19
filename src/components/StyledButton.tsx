@@ -1,8 +1,4 @@
-import {
-  StyleSheet,
-  TouchableOpacity,
-  TouchableOpacityProps,
-} from "react-native";
+import { Pressable, StyleSheet, TouchableOpacityProps } from "react-native";
 import { getColors } from "../static/colors";
 
 interface StyledButtonProps extends TouchableOpacityProps {
@@ -23,25 +19,19 @@ const StyledButton = ({
       paddingHorizontal: 12,
       borderRadius: 5,
       backgroundColor: colors.accentPrimary,
-      // ...Platform.select({
-      //   ios: {
-      //     backgroundColor: PlatformColor("systemYellow"),
-      //     color: PlatformColor("label"),
-      //   },
-      // }),
     },
     link: {
       backgroundColor: "transparent",
     },
   });
   return (
-    <TouchableOpacity
+    <Pressable
       style={StyleSheet.flatten([defaultStyles[variant], styles])}
       activeOpacity={0.65}
       {...restProps}
     >
       {children}
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 export default StyledButton;
