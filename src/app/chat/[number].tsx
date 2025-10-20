@@ -3,8 +3,9 @@ import StyledText from "@/src/components/StyledText";
 import StyledTextInput from "@/src/components/StyledTextInput";
 import { getColors } from "@/src/static/colors";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
-import { useEffect } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import { useEffect, useState } from "react";
+import * as Contacts from "expo-contacts";
 import { View, StyleSheet } from "react-native";
 import {
   SafeAreaView,
@@ -13,11 +14,20 @@ import {
 
 export default function Chat() {
   const colors = getColors();
-  const urlParam = useLocalSearchParams();
+  const { number, id }: { number: string; id: string } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
+  const [name, setName] = useState<string>();
 
   const fetchChats = () => {};
-  useEffect(() => fetchChats(), []);
+  const sentMessage = () => {};
+  useEffect(() => {
+    fetchChats();
+    (async () => {
+      // console.log(typeof urlParam.id);
+      const data = await Contacts.getContactByIdAsync(id.split("/")[0]);
+      setName(data?.firstName + " " + data?.lastName);
+    })();
+  }, []);
 
   const dynamicStyles = StyleSheet.create({
     container: {
@@ -30,7 +40,19 @@ export default function Chat() {
   });
   return (
     <SafeAreaView style={dynamicStyles.container}>
-      <StyledText>Chat: {urlParam.number}</StyledText>
+      <View style={styles.header}>
+        <StyledButton onPress={() => router.back()} variant="link">
+          <Ionicons
+            color={colors.accentPrimary}
+            name="chevron-back"
+            size={24}
+          />
+        </StyledButton>
+        <StyledText style={styles.image}>
+          <Ionicons name="search" size={24} />
+        </StyledText>
+        <StyledText>{name}</StyledText>
+      </View>
       <View
         style={StyleSheet.flatten([
           dynamicStyles.messageBar,
@@ -41,7 +63,10 @@ export default function Chat() {
           style={styles.messageInput}
           placeholder={"Send message"}
         />
-        <StyledButton onPress={() => {}} style={styles.messageButton}>
+        <StyledButton
+          onPress={() => sentMessage()}
+          style={styles.messageButton}
+        >
           <StyledText>
             <Ionicons name="send" size={24} />
           </StyledText>
@@ -52,9 +77,18 @@ export default function Chat() {
 }
 
 const styles = StyleSheet.create({
+  image: {
+    margin: 8,
+  },
+  header: {
+    flex: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   messageButton: {
     paddingHorizontal: 10,
-    padding: 10,
+    paddingVertical: 10,
     margin: 4,
     borderRadius: 25,
   },

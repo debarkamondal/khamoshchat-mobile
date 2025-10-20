@@ -24,9 +24,8 @@ const StyledButton = ({
 
   const styles = StyleSheet.create({
     base: {
-      margin: 4,
-      paddingVertical: 10,
-      paddingHorizontal: 16,
+      paddingVertical: 4,
+      paddingHorizontal: 4,
       borderRadius: 8,
       alignItems: "center",
       justifyContent: "center",

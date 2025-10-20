@@ -54,7 +54,9 @@ export default function Contacts() {
               <Ionicons name={"search"} size={24} />
             </StyledText>
             <Pressable
-              onPress={() => router.replace("/chat/1")}
+              onPress={() =>
+                router.replace(`/chat/${item.number}?id=${item.id}`)
+              }
               style={styles.cardContent}
             >
               {item && (

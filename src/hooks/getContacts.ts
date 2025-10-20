@@ -35,7 +35,7 @@ const getContacts = async (): Promise<SplitContact[] | null> => {
           splitContacts.push({
             firstName: contact.firstName ?? (numbers.number as string),
             lastName: contact.lastName,
-            id: contact.id + "-" + j,
+            id: contact.id + "/" + j,
             number: numbers.number,
             label: numbers.label,
           });
