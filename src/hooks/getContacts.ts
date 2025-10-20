@@ -6,6 +6,7 @@ type SplitContact = {
   lastName: string | undefined;
   label: string;
   number: string;
+  // digits: string;
 };
 const getContacts = async (): Promise<SplitContact[] | null> => {
   const splitContacts: SplitContact[] = [];

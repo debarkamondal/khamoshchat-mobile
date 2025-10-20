@@ -6,13 +6,24 @@ import {
 } from "expo-router/unstable-native-tabs";
 import { MaterialIcons as iconFont } from "@expo/vector-icons";
 import { getColors } from "@/src/static/colors";
+import { PlatformColor, useColorScheme } from "react-native";
 
 export default function TabLayout() {
   const colors = getColors();
+  const scheme = useColorScheme();
   return (
     <NativeTabs
       tintColor={colors.accentPrimary}
-      backgroundColor={colors.backgroundPrimary}
+      backgroundColor={
+        scheme === "dark"
+          ? PlatformColor("@android:color/system_accent1_900")
+          : PlatformColor("@android:color/system_accent1_400")
+      }
+      indicatorColor={
+        scheme === "dark"
+          ? PlatformColor("@android:color/system_accent1_800")
+          : PlatformColor("@android:color/system_accent1_500")
+      }
     >
       <NativeTabs.Trigger name="index">
         <Label>Personal</Label>

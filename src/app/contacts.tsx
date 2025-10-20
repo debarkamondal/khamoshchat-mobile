@@ -1,15 +1,16 @@
-import { FlatList, Platform, StyleSheet, View } from "react-native";
+import { FlatList, Platform, Pressable, StyleSheet, View } from "react-native";
 import StyledText from "../components/StyledText";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import StyledButton from "../components/StyledButton";
 import { useEffect, useState } from "react";
 import StyledTextInput from "../components/StyledTextInput";
 import Card from "../components/Card";
 import { getContacts, SplitContact } from "../hooks/getContacts";
+import { Link, router } from "expo-router";
 
 export default function Contacts() {
   const [contacts, setContacts] = useState<SplitContact[] | null>();
+  const [searchTerm, setSearchTerm] = useState<string>();
   useEffect(() => {
     (async () => {
       const contacts = await getContacts();
@@ -100,10 +101,25 @@ export default function Contacts() {
   }, []);
   return (
     <SafeAreaView style={styles.blurView}>
+      {/* Things inside the SafeAreaView is same for android and ios can be copied */}
       <StyledText style={styles.heading}>Contacts</StyledText>
-      <StyledTextInput style={styles.searchBar} placeholder="Search contacts" />
+      <StyledTextInput
+        onChangeText={(text) => setSearchTerm(text)}
+        style={styles.searchBar}
+        placeholder="Search contacts"
+      />
       <FlatList
-        data={contacts}
+        data={
+          searchTerm
+            ? contacts?.filter(
+                (contact) =>
+                  contact.number.startsWith(searchTerm) ||
+                  contact.firstName
+                    .toLowerCase()
+                    .startsWith(searchTerm.toLowerCase()),
+              )
+            : contacts
+        }
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.contactList}
         scrollEnabled={true}
@@ -112,7 +128,10 @@ export default function Contacts() {
             <StyledText>
               <Ionicons name={"search"} size={24} />
             </StyledText>
-            <View style={styles.cardContent}>
+            <Pressable
+              onPress={() => router.replace(`/chat/${item.number}`)}
+              style={styles.cardContent}
+            >
               {item && (
                 <StyledText>
                   {item.firstName} {item.lastName}
@@ -121,7 +140,7 @@ export default function Contacts() {
               <StyledText style={styles.phoneNumber}>
                 {item.number} ({item.label})
               </StyledText>
-            </View>
+            </Pressable>
           </Card>
         )}
       />
@@ -139,6 +158,7 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 0,
+    flexDirection: "column",
     marginVertical: 4,
   },
   cards: {
@@ -170,7 +190,7 @@ const styles = StyleSheet.create({
   //   justifyContent: "space-between",
   // },
   blurView: {
-    flex: 1,
+    flex: 0,
     marginTop: Platform.OS === "ios" ? 42 : 24,
     marginHorizontal: Platform.OS === "ios" ? 16 : 12,
   },

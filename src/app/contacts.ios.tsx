@@ -1,4 +1,4 @@
-import { FlatList, StyleSheet, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import StyledText from "../components/StyledText";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
@@ -6,9 +6,11 @@ import StyledTextInput from "../components/StyledTextInput";
 import Card from "../components/Card";
 import { getContacts, SplitContact } from "../hooks/getContacts";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Link, router } from "expo-router";
 
 export default function Contacts() {
   const [contacts, setContacts] = useState<SplitContact[] | null>();
+  const [searchTerm, setSearchTerm] = useState<string>();
   useEffect(() => {
     (async () => {
       const contacts = await getContacts();
@@ -28,11 +30,22 @@ export default function Contacts() {
         <StyledText style={styles.heading}>Contacts</StyledText>
         <StyledTextInput
           style={styles.searchBar}
+          onChangeText={(text) => setSearchTerm(text)}
           placeholder="Search contacts"
         />
       </View>
       <FlatList
-        data={contacts}
+        data={
+          searchTerm
+            ? contacts?.filter(
+                (contact) =>
+                  contact.number.startsWith(searchTerm) ||
+                  contact.firstName
+                    .toLowerCase()
+                    .startsWith(searchTerm.toLowerCase()),
+              )
+            : contacts
+        }
         keyExtractor={(item) => item.id}
         contentContainerStyle={dynamicStyle.contactList}
         renderItem={({ item }) => (
@@ -40,7 +53,10 @@ export default function Contacts() {
             <StyledText>
               <Ionicons name={"search"} size={24} />
             </StyledText>
-            <View style={styles.cardContent}>
+            <Pressable
+              onPress={() => router.replace("/chat/1")}
+              style={styles.cardContent}
+            >
               {item && (
                 <StyledText>
                   {item.firstName} {item.lastName}
@@ -49,7 +65,7 @@ export default function Contacts() {
               <StyledText style={styles.phoneNumber}>
                 {item.number} ({item.label})
               </StyledText>
-            </View>
+            </Pressable>
           </Card>
         )}
       />

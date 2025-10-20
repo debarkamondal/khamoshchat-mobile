@@ -15,14 +15,16 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   setColors();
-  const { isRegistered } = useSession();
-  if (isRegistered) SplashScreen.hide();
+
+  const { isRegistered  } = useSession();
+  SplashScreen.hide();
   const colors = getColors();
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={isRegistered}>
         <Stack.Screen name="(protected)" />
+        <Stack.Screen name="chat/[number]" />
         <Stack.Screen
           name="contacts"
           options={{
