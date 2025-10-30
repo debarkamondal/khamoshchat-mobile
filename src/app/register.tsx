@@ -4,7 +4,7 @@ import StyledStyledTextInput from "@/src/components/StyledTextInput";
 import StyledButton from "@/src/components/StyledButton";
 import { Feather } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
-import { useTheme } from "@/src/hooks/colors";
+import { useTheme } from "@/src/hooks/useTheme";
 import StyledText from "@/src/components/StyledText";
 import { useMemo, useState } from "react";
 import "./../polyfills/crypto";

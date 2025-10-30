@@ -1,5 +1,5 @@
 import StyledText from "@/src/components/StyledText";
-import { useTheme } from "@/src/hooks/colors";
+import { useTheme } from "@/src/hooks/useTheme";
 import { View, StyleSheet } from "react-native";
 
 export default function Groups() {

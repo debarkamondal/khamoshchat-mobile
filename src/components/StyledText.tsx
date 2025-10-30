@@ -1,5 +1,5 @@
 import { StyleSheet, Text, TextProps } from "react-native";
-import { useTheme } from "@/src/hooks/colors";
+import { useTheme } from "@/src/hooks/useTheme";
 
 const StyledText = ({ style: styles, ...restProps }: TextProps) => {
   const {colors} = useTheme();

@@ -1,6 +1,6 @@
 import { SafeAreaView } from "react-native-safe-area-context";
 import StyledText from "../../components/StyledText";
-import { useTheme } from "@/src/hooks/colors";
+import { useTheme } from "@/src/hooks/useTheme";
 import useSession from "@/src/store/session";
 import StyledButton from "@/src/components/StyledButton";
 import OtpInput from "@/src/components/OtpInput";

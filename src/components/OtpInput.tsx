@@ -11,7 +11,7 @@ import {
   Platform,
   StyleProp,
 } from "react-native";
-import { useTheme } from "@/src/hooks/colors";
+import { useTheme } from "@/src/hooks/useTheme";
 
 export interface OtpInputProps {
   length?: number;

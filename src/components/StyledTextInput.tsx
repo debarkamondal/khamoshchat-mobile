@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { StyleSheet, TextInput as Input, TextInputProps } from "react-native";
-import { useTheme } from "@/src/hooks/colors";
+import { useTheme } from "@/src/hooks/useTheme";
 
 const StyledTextInput = ({ style: styles, ...restProps }: TextInputProps) => {
   const [isInFocus, setIsInFocus] = useState(false);

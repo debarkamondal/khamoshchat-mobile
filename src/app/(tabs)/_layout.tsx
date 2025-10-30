@@ -5,7 +5,7 @@ import {
   VectorIcon,
 } from "expo-router/unstable-native-tabs";
 import { MaterialIcons as iconFont } from "@expo/vector-icons";
-import { useTheme } from "@/src/hooks/colors";
+import { useTheme } from "@/src/hooks/useTheme";
 import { PlatformColor, useColorScheme } from "react-native";
 
 export default function TabLayout() {

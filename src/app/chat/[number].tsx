@@ -1,7 +1,7 @@
 import StyledButton from "@/src/components/StyledButton";
 import StyledText from "@/src/components/StyledText";
 import StyledTextInput from "@/src/components/StyledTextInput";
-import { useTheme } from "@/src/hooks/colors";
+import { useTheme } from "@/src/hooks/useTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";

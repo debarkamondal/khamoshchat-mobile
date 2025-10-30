@@ -1,6 +1,6 @@
 import StyledButton from "@/src/components/StyledButton";
 import StyledText from "@/src/components/StyledText";
-import { useTheme } from "@/src/hooks/colors";
+import { useTheme } from "@/src/hooks/useTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { View, StyleSheet, Platform } from "react-native";
