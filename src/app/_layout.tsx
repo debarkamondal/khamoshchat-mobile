@@ -33,7 +33,7 @@ function InnerLayout({ isRegistered }: { isRegistered: boolean }) {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={isRegistered}>
-        <Stack.Screen name="(protected)" />
+        <Stack.Screen name="(tabs)" />
         <Stack.Screen name="chat/[number]" />
         <Stack.Screen
           name="contacts"
