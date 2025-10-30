@@ -1,13 +1,13 @@
 import StyledButton from "@/src/components/StyledButton";
 import StyledText from "@/src/components/StyledText";
-import { getColors } from "@/src/static/colors";
+import { useTheme } from "@/src/hooks/colors";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { View, StyleSheet, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function Index() {
-  const colors = getColors();
+  const {colors} = useTheme();
   const insets = useSafeAreaInsets();
 
   const styles = StyleSheet.create({

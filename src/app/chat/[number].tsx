@@ -1,7 +1,7 @@
 import StyledButton from "@/src/components/StyledButton";
 import StyledText from "@/src/components/StyledText";
 import StyledTextInput from "@/src/components/StyledTextInput";
-import { getColors } from "@/src/static/colors";
+import { useTheme } from "@/src/hooks/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
@@ -13,13 +13,13 @@ import {
 } from "react-native-safe-area-context";
 
 export default function Chat() {
-  const colors = getColors();
+  const colors = useTheme();
   const { number, id }: { number: string; id: string } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState<string>();
 
   const fetchChats = () => {};
-  const sentMessage = () => {};
+  const sendMessage = () => {};
   useEffect(() => {
     fetchChats();
     (async () => {
@@ -64,7 +64,7 @@ export default function Chat() {
           placeholder={"Send message"}
         />
         <StyledButton
-          onPress={() => sentMessage()}
+          onPress={() => sendMessage()}
           style={styles.messageButton}
         >
           <StyledText>

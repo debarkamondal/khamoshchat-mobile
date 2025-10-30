@@ -1,7 +1,7 @@
 import * as SplashScreen from "expo-splash-screen";
 import { Stack } from "expo-router";
 import useSession from "./../store/session";
-import { getColors, setColors } from "../static/colors";
+import { ThemeProvider, useTheme } from "@/src/hooks/colors";
 import { Platform } from "react-native";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 
@@ -14,12 +14,22 @@ SplashScreen.setOptions({
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  setColors();
+  // setColors();
 
-  const { isRegistered  } = useSession();
+  const { isRegistered } = useSession();
   SplashScreen.hide();
-  const colors = getColors();
+  // Use useTheme hook for style context
+  // const colors = getColors();
 
+  return (
+    <ThemeProvider>
+      <InnerLayout isRegistered={isRegistered} />
+    </ThemeProvider>
+  );
+}
+
+function InnerLayout({ isRegistered }: { isRegistered: boolean }) {
+  const { colors } = useTheme();
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={isRegistered}>

@@ -4,14 +4,14 @@ import StyledStyledTextInput from "@/src/components/StyledTextInput";
 import StyledButton from "@/src/components/StyledButton";
 import { Feather } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
-import { getColors } from "@/src/static/colors";
+import { useTheme } from "@/src/hooks/colors";
 import StyledText from "@/src/components/StyledText";
 import { useMemo, useState } from "react";
 import "./../polyfills/crypto";
 import useSession from "@/src/store/session";
 
 export default function register() {
-  const colors = getColors();
+  const colors = useTheme();
   const [phone, setPhone] = useState<string>();
   const [countryCode, setCountryCode] = useState<string>("+91");
 

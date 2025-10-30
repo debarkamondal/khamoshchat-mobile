@@ -11,7 +11,7 @@ import {
   Platform,
   StyleProp,
 } from "react-native";
-import { getColors } from "../static/colors";
+import { useTheme } from "@/src/hooks/colors";
 
 export interface OtpInputProps {
   length?: number;
@@ -47,7 +47,7 @@ export default function OtpInput({
     isControlled ? controlledValue || "" : "",
   );
   const inputs = useRef<(TextInput | null)[]>([]);
-  const colors = getColors();
+  const colors = useTheme();
 
   useEffect(() => {
     if (isControlled) setValue(controlledValue || "");

@@ -5,11 +5,11 @@ import {
   VectorIcon,
 } from "expo-router/unstable-native-tabs";
 import { MaterialIcons as iconFont } from "@expo/vector-icons";
-import { getColors } from "@/src/static/colors";
+import { useTheme } from "@/src/hooks/colors";
 import { PlatformColor, useColorScheme } from "react-native";
 
 export default function TabLayout() {
-  const colors = getColors();
+  const {colors} = useTheme();
   const scheme = useColorScheme();
   return (
     <NativeTabs

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { StyleSheet, TextInput as Input, TextInputProps } from "react-native";
-import { getColors } from "../static/colors";
+import { useTheme } from "@/src/hooks/colors";
 
 const StyledTextInput = ({ style: styles, ...restProps }: TextInputProps) => {
   const [isInFocus, setIsInFocus] = useState(false);
-  const colors = getColors();
+  const colors = useTheme();
   const defaultStyles = StyleSheet.create({
     textInputDefault: {
       color: colors.textPrimary,

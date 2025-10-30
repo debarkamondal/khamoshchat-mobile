@@ -1,6 +1,6 @@
 import { SafeAreaView } from "react-native-safe-area-context";
 import StyledText from "../../components/StyledText";
-import { getColors } from "@/src/static/colors";
+import { useTheme } from "@/src/hooks/colors";
 import useSession from "@/src/store/session";
 import StyledButton from "@/src/components/StyledButton";
 import OtpInput from "@/src/components/OtpInput";
@@ -10,7 +10,7 @@ import { genOtks } from "@/src/utils/otks";
 import { router } from "expo-router";
 
 export default function otp() {
-  const colors = getColors();
+  const colors = useTheme();
   const session = useSession();
 
   const {
