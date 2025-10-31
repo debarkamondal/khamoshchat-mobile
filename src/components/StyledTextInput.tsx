@@ -4,7 +4,7 @@ import { useTheme } from "@/src/hooks/useTheme";
 
 const StyledTextInput = ({ style: styles, ...restProps }: TextInputProps) => {
   const [isInFocus, setIsInFocus] = useState(false);
-  const colors = useTheme();
+  const {colors} = useTheme();
   const defaultStyles = StyleSheet.create({
     textInputDefault: {
       color: colors.textPrimary,

@@ -47,7 +47,7 @@ export default function OtpInput({
     isControlled ? controlledValue || "" : "",
   );
   const inputs = useRef<(TextInput | null)[]>([]);
-  const colors = useTheme();
+  const {colors} = useTheme();
 
   useEffect(() => {
     if (isControlled) setValue(controlledValue || "");
