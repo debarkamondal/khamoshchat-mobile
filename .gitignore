@@ -3,6 +3,10 @@
 # dependencies
 node_modules/
 
+#libsignal-dezire
+libsignal-dezire/target
+libsignal-dezire/libsignal-dezire.h
+
 # Expo
 .expo/
 dist/
