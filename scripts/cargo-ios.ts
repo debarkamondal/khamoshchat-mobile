@@ -36,21 +36,21 @@ function main() {
   console.log("Building rust library for ios");
   Object.values(TARGETS).forEach(cargoBuild);
 
-  console.log("Generating bindings for ios");
-  spawnSync(
-    "cbindgen",
-    [
-      "--lang",
-      "c",
-      "--crate",
-      "libsignal-dezire",
-      "--output",
-      "libsignal-dezire.h",
-    ],
-    {
-      stdio: "inherit",
-    }
-  );
+  // console.log("Generating bindings for ios");
+  // spawnSync(
+  //   "cbindgen",
+  //   [
+  //     "--lang",
+  //     "c",
+  //     "--crate",
+  //     "libsignal-dezire",
+  //     "--output",
+  //     "libsignal-dezire.h",
+  //   ],
+  //   {
+  //     stdio: "inherit",
+  //   }
+  // );
 
   process.chdir("..");
 
@@ -69,11 +69,11 @@ function main() {
     "release",
     "liblibsignal_dezire.a"
   );
-  const rustHeadersPath = path.join(
-    process.cwd(),
-    "libsignal-dezire",
-    "libsignal-dezire.h"
-  );
+  // const rustHeadersPath = path.join(
+  //   process.cwd(),
+  //   "libsignal-dezire",
+  //   "libsignal-dezire.h"
+  // );
 
   if (!fs.existsSync(destinationPath)) {
     fs.mkdirSync(destinationPath, { recursive: true });
@@ -82,10 +82,10 @@ function main() {
     rustLibPath,
     path.join(destinationPath, "liblibsignal_dezire.a")
   );
-  fs.copyFileSync(
-    rustHeadersPath,
-    path.join(destinationPath, "libsignal-dezire.h")
-  );
+  // fs.copyFileSync(
+  //   rustHeadersPath,
+  //   path.join(destinationPath, "libsignal-dezire.h")
+  // );
 }
 
 main();
