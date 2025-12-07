@@ -22,7 +22,7 @@ function build(target: string) {
 function main() {
   console.log("Building rust library for android");
 
-  process.chdir("signal-protocol-rust");
+  process.chdir("libsignal-dezire");
 
   Object.keys(TARGET_TO_DESTINATION).forEach(build);
 
@@ -31,16 +31,16 @@ function main() {
   Object.entries(TARGET_TO_DESTINATION).forEach(([target, architecture]) => {
     const sourcePath = path.join(
       process.cwd(),
-      "signal-protocol-rust",
+      "libsignal-dezire",
       "target",
       target,
       "release",
-      "libsignal_protocol_rust.so"
+      "liblibsignal_dezire.so"
     );
     const architecturePath = path.join(
       process.cwd(),
       "modules",
-      "rust-test",
+      "libsignal-dezire",
       "android",
       "src",
       "main",
@@ -52,7 +52,7 @@ function main() {
     }
     fs.copyFileSync(
       sourcePath,
-      path.join(architecturePath, "libsignal_protocol_rust.so")
+      path.join(architecturePath, "liblibsignal_dezire.so")
     );
   });
 }
