@@ -7,6 +7,10 @@ node_modules/
 libsignal-dezire/target
 libsignal-dezire/libsignal-dezire.h
 
+#modules/libsignal-dezire
+modules/libsignal-dezire/android/src/main/jniLibs
+modules/libsignal-dezire/ios/rust/liblibsignal_dezire.a
+
 # Expo
 .expo/
 dist/
