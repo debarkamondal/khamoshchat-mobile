@@ -21,11 +21,18 @@ fn test_vxeddsa_sign_produces_signature() {
     OsRng.fill_bytes(&mut nonce);
 
     // Call the function
-    let signature = vxeddsa_sign(secret.to_bytes(), &message, &nonce);
+    let signature = vxeddsa_sign(&secret.to_bytes(), &message, &nonce);
     message[31] = 6;
 
-    let res = vxeddsa_verify(public.to_bytes(), &message, &signature.0);
+    let mut v_out = [0u8; 32];
+    let res = vxeddsa_verify(
+        &public.to_bytes(),
+        &message,
+        &signature.signature,
+        &mut v_out,
+    );
 
-    println!("vfr1 {:?}", signature.1);
-    println!("vfr2 {:?}", res);
+    println!("vfr1 {:?}", signature.vfr);
+    println!("vfr2 status {:?}", res);
+    println!("vfr2 {:?}", v_out);
 }

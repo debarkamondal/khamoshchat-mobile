@@ -29,6 +29,8 @@ export default function Index() {
     const res = await LibsignalDezireModule.vxeddsaSign(keypair.secret, bytes, new Uint8Array(32));
     console.log("Signature:", res.signature);
     console.log("VFR:", res.vfr);
+    const verificationResult = await LibsignalDezireModule.vxeddsaVerify(keypair.public, bytes, res.signature);
+    console.log("Verification Result:", verificationResult);
   }
   useEffect(() => {
     sign();

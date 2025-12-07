@@ -50,3 +50,8 @@ struct KeyPair gen_keypair(void);
 struct VXEdDSAOutput vxeddsa_sign(const uint8_t *k,
                                   const uint8_t *M,
                                   const uint8_t *z);
+
+bool vxeddsa_verify(const uint8_t *u,
+                    const uint8_t *M,
+                    const uint8_t *signature,
+                    uint8_t *v_out);

@@ -59,6 +59,25 @@ public class LibsignalDezireModule: Module {
         ]
     }
 
+    AsyncFunction("vxeddsaVerify") { (uData: Data, MData: Data, signatureData: Data) -> Data? in
+        let u = [UInt8](uData)
+        let M = [UInt8](MData)
+        let signature = [UInt8](signatureData)
+
+        guard u.count == 32, M.count == 32, signature.count == 96 else {
+             throw NSError(domain: "LibsignalDezire", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid input lengths"])
+        }
+
+        var v_out = [UInt8](repeating: 0, count: 32)
+        let isValid = vxeddsa_verify(u, M, signature, &v_out)
+
+        if isValid {
+            return Data(v_out)
+        } else {
+            return nil
+        }
+    }
+
     // Defines a JavaScript function that always returns a Promise and whose native code
     // is by default dispatched on the different thread than the JavaScript runtime runs on.
     AsyncFunction("setValueAsync") { (value: String) in

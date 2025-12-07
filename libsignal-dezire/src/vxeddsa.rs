@@ -160,7 +160,13 @@ pub extern "C" fn vxeddsa_sign(k: &[u8; 32], M: &[u8; 32], z: &[u8; 32]) -> VXEd
 ///
 /// * `Some([u8; 32])` - The VRF output `v` if the signature is valid.
 /// * `None` - If the signature is invalid, the point `u` is invalid, or any identity checks fail.
-pub fn vxeddsa_verify(u: [u8; 32], M: &[u8], signature: &[u8; 96]) -> Option<[u8; 32]> {
+#[unsafe(no_mangle)]
+pub extern "C" fn vxeddsa_verify(
+    u: &[u8; 32],
+    M: &[u8; 32],
+    signature: &[u8; 96],
+    v_out: *mut [u8; 32],
+) -> bool {
     // --- 1. Parsing and splitting the signature ---
     let V_bytes = &signature[0..32];
     let h_bytes = &signature[32..64];
@@ -169,19 +175,38 @@ pub fn vxeddsa_verify(u: [u8; 32], M: &[u8], signature: &[u8; 96]) -> Option<[u8
     // Deserialize Scalars.
     // from_canonical_bytes checks if scalar < L (CURVE_Q).
     // If check fails, it returns None, matching TS `if (h >= CURVE_Q...) return false`
-    let h = Option::<Scalar>::from(Scalar::from_canonical_bytes(h_bytes.try_into().ok()?))?;
-    let s = Option::<Scalar>::from(Scalar::from_canonical_bytes(s_bytes.try_into().ok()?))?;
+    let h = match Option::<Scalar>::from(Scalar::from_canonical_bytes(match h_bytes.try_into() {
+        Ok(bytes) => bytes,
+        Err(_) => return false,
+    })) {
+        Some(s) => s,
+        None => return false,
+    };
+
+    let s = match Option::<Scalar>::from(Scalar::from_canonical_bytes(match s_bytes.try_into() {
+        Ok(bytes) => bytes,
+        Err(_) => return false,
+    })) {
+        Some(s) => s,
+        None => return false,
+    };
 
     // --- 2. Decompress Points & Check on_curve ---
 
     // Convert X25519 u-coordinate to Ed25519 Point A
     // convert_mont is expected to return an EdwardsPoint derived from u
-    let A = convert_mont(u);
+    let A = convert_mont(*u);
     let A_bytes = A.compress().to_bytes();
 
     // Decompress V: Slice -> [u8;32] -> CompressedEdwardsY -> EdwardsPoint
-    let V_arr: [u8; 32] = V_bytes.try_into().ok()?;
-    let V = CompressedEdwardsY(V_arr).decompress()?;
+    let V_arr: [u8; 32] = match V_bytes.try_into() {
+        Ok(arr) => arr,
+        Err(_) => return false,
+    };
+    let V = match CompressedEdwardsY(V_arr).decompress() {
+        Some(p) => p,
+        None => return false,
+    };
 
     // --- 3. Bv = hash_to_point(A || M) ---
     let mut point_msg = Vec::with_capacity(A_bytes.len() + M.len());
@@ -194,7 +219,7 @@ pub fn vxeddsa_verify(u: [u8; 32], M: &[u8], signature: &[u8; 96]) -> Option<[u8
 
     // --- 4. Check for identity points ---
     if A.is_identity() || V.is_identity() || Bv.is_identity() {
-        return None;
+        return false;
     }
 
     // --- 5. R = sB - hA ---
@@ -218,7 +243,7 @@ pub fn vxeddsa_verify(u: [u8; 32], M: &[u8], signature: &[u8; 96]) -> Option<[u8
 
     // --- 8. if bytes_equal(h, hcheck) ---
     if h != hcheck {
-        return None;
+        return false;
     }
 
     // --- 9. Success: return v ---
@@ -227,10 +252,15 @@ pub fn vxeddsa_verify(u: [u8; 32], M: &[u8], signature: &[u8; 96]) -> Option<[u8
     let cV_bytes = cV_point.compress().to_bytes();
 
     let v_hash_full = hashi(5, &cV_bytes);
-    let mut v = [0u8; 32];
-    v.copy_from_slice(&v_hash_full[0..32]);
 
-    Some(v)
+    // Write output to pointer if not null
+    if !v_out.is_null() {
+        unsafe {
+            (*v_out).copy_from_slice(&v_hash_full[0..32]);
+        }
+    }
+
+    true
 }
 // #![allow(non_snake_case)]
 // use curve25519_dalek::{
