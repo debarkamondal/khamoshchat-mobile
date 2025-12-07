@@ -40,7 +40,7 @@ export default function Index() {
   return (
     <View style={styles.container}>
       <StyledText>Tab Home</StyledText>
-      <StyledText>{keyPair.public}</StyledText>
+      <StyledText>{btoa(keyPair.secret)}</StyledText>
       <StyledButton
         style={styles.contactButton}
         onPress={() => router.push("/contacts")}

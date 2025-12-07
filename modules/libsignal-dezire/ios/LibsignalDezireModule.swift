@@ -19,22 +19,22 @@ public class LibsignalDezireModule: Module {
     Events("onChange")
 
     // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
-AsyncFunction("genKeyPair") { () -> [String: String] in
-    var keys = gen_keypair()
+    AsyncFunction("genKeyPair") { () -> [String: Data] in
+        var keys = gen_keypair()
 
-    // Access the C-tuples/arrays.
-    let secretData = withUnsafePointer(to: &keys.secret) {
-        Data(bytes: $0, count: 32)
-    }
-    let publicData = withUnsafePointer(to: &keys.public_) {
-        Data(bytes: $0, count: 32)
-    }
+        // Access the C-tuples/arrays.
+        let secretData = withUnsafePointer(to: &keys.secret) {
+            Data(bytes: $0, count: 32)
+        }
+        let publicData = withUnsafePointer(to: &keys.public_) {
+            Data(bytes: $0, count: 32)
+        }
 
-    return [
-        "secret": secretData.base64EncodedString(),
-        "public": publicData.base64EncodedString()
-    ]
-}
+        return [
+            "secret": secretData,
+            "public": publicData
+        ]
+    }
 
     // Defines a JavaScript function that always returns a Promise and whose native code
     // is by default dispatched on the different thread than the JavaScript runtime runs on.

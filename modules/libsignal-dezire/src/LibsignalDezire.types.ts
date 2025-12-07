@@ -9,8 +9,8 @@ export type LibsignalDezireModuleEvents = {
 };
 
 export type KeyPair = {
-  secret: string;
-  public: string;
+  secret: Uint8Array;
+  public: Uint8Array;
 }
 export type ChangeEventPayload = {
   value: string;
