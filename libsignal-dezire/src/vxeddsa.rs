@@ -262,165 +262,172 @@ pub extern "C" fn vxeddsa_verify(
 
     true
 }
-// #![allow(non_snake_case)]
-// use curve25519_dalek::{
-//     EdwardsPoint, MontgomeryPoint, Scalar, constants::ED25519_BASEPOINT_POINT,
-//     edwards::CompressedEdwardsY, traits::IsIdentity,
-// };
-// use sha2::Sha512;
-//
-// use crate::{
-//     hashes::hashi,
-//     utils::{calculate_key_pair, convert_mont},
-// };
-//
-// pub fn vxeddsa_sign(k: [u8; 32], M: &[u8; 32], z: &[u8; 32]) -> ([u8; 96], [u8; 32]) {
-//     let (a, A) = calculate_key_pair(k);
-//     // let mut hasher = Sha512::new();
-//     // hasher.update(a_pub.to_bytes());
-//     // hasher.update(m);
-//     // let digest: [u8; 64] = hasher.finalize().into();
-//
-//     let a_bytes = A.compress().to_bytes();
-//     let mut point_msg = Vec::with_capacity(a_bytes.iter().len() + M.len());
-//     point_msg.extend_from_slice(&a_bytes);
-//     point_msg.extend_from_slice(M);
-//
-//     // We are using the Elligator2 according to the VXEdDSA protocol
-//     // It was deprecated back in 2023 in favour of RFC 9380
-//     // It's still secure cryptographically (atleast for now)
-//     // We currently plan to follow signal and their implementation
-//     #[warn(deprecated)]
-//     // Map to curve (Elligator 2) and clear cofactor (multiply by 8)
-//     let Bv = EdwardsPoint::nonspec_map_to_curve::<Sha512>(&point_msg).mul_by_cofactor();
-//
-//     // 3. V = a * Bv
-//     let V = Bv * a;
-//     let V_bytes = V.compress().to_bytes();
-//
-//     // 4. r = hash3(a || V || Z) (mod q)
-//     // We concatenate bytes into a Vec for the hash input
-//     let mut r_msg = Vec::new();
-//     r_msg.extend_from_slice(a.as_bytes());
-//     r_msg.extend_from_slice(&V_bytes);
-//     r_msg.extend_from_slice(z);
-//
-//     let r_hash = hashi(3, &r_msg);
-//
-//     let r = Scalar::from_bytes_mod_order_wide(&r_hash);
-//
-//     if r == Scalar::ZERO {
-//         panic!("Scalar r is zero. Cannot create signature.");
-//     }
-//
-//     // 5. R = r * B
-//     let R_point = ED25519_BASEPOINT_POINT * r;
-//     let R_bytes = R_point.compress().to_bytes();
-//
-//     // 6. Rv = r * Bv
-//     let Rv_point = Bv * r;
-//     let Rv_bytes = Rv_point.compress().to_bytes();
-//
-//     // 7. h = hash4(A || V || R || Rv || M) (mod q)
-//     let mut h_msg = Vec::new();
-//     h_msg.extend_from_slice(&a_bytes);
-//     h_msg.extend_from_slice(&V_bytes);
-//     h_msg.extend_from_slice(&R_bytes);
-//     h_msg.extend_from_slice(&Rv_bytes);
-//     h_msg.extend_from_slice(M);
-//
-//     let h_hash = hashi(4, &h_msg);
-//     let h = Scalar::from_bytes_mod_order_wide(&h_hash);
-//
-//     // 8. s = r + (h * a) (mod q)
-//     let s = r + (h * a);
-//
-//     // 9. v = hash5(cV) (mod 2^256, which basically means take 32 bytes)
-//     // cV means V multiplied by cofactor (8)
-//     let cV_point = V.mul_by_cofactor();
-//     let cV_bytes = cV_point.compress().to_bytes();
-//
-//     let v_hash_full = hashi(5, &cV_bytes);
-//     let mut v = [0u8; 32];
-//     v.copy_from_slice(&v_hash_full[0..32]);
-//
-//     // 10. return (V || h || s), v
-//     let mut signature = [0u8; 96];
-//     signature[0..32].copy_from_slice(&V_bytes);
-//     signature[32..64].copy_from_slice(&h.to_bytes());
-//     signature[64..96].copy_from_slice(&s.to_bytes());
-//     (signature, v)
-// }
-//
-// pub fn vxeddsa_verify(u: [u8; 32], M: &[u8], signature: &[u8; 96]) -> Option<[u8; 32]> {
-//     // --- 1. Parsing and splitting the signature ---
-//     let V_bytes = &signature[0..32];
-//     let h_bytes = &signature[32..64];
-//     let s_bytes = &signature[64..96];
-//
-//     // Deserialize Scalars.
-//     // from_canonical_bytes checks if scalar < L (CURVE_Q).
-//     // If check fails, it returns None, matching TS `if (h >= CURVE_Q...) return false`
-//     let h = Option::<Scalar>::from(Scalar::from_canonical_bytes(h_bytes.try_into().ok()?))?;
-//     let s = Option::<Scalar>::from(Scalar::from_canonical_bytes(s_bytes.try_into().ok()?))?;
-//
-//     // --- 2. Decompress Points & Check on_curve ---
-//
-//     // Convert X25519 u-coordinate to Ed25519 Point A
-//     // MontgomeryPoint::to_edwards(0) performs the conversion and checks validity.
-//     let A = convert_mont(u);
-//     let A_bytes = A.compress().to_bytes();
-//
-//     // Decompress V: Slice -> [u8;32] -> CompressedEdwardsY -> EdwardsPoint
-//     let V_arr: [u8; 32] = V_bytes.try_into().ok()?;
-//     let V = CompressedEdwardsY(V_arr).decompress()?;
-//
-//     // --- 3. Bv = hash_to_point(A || M) ---
-//     let mut point_msg = Vec::with_capacity(A_bytes.len() + M.len());
-//     point_msg.extend_from_slice(&A_bytes);
-//     point_msg.extend_from_slice(M);
-//
-//     // We must use the same deprecated map as the Sign function
-//     #[allow(deprecated)]
-//     let Bv = EdwardsPoint::nonspec_map_to_curve::<Sha512>(&point_msg).mul_by_cofactor();
-//
-//     // --- 4. Check for identity points ---
-//     if A.is_identity() || V.is_identity() || Bv.is_identity() {
-//         return None;
-//     }
-//
-//     // --- 5. R = sB - hA ---
-//     let R = (ED25519_BASEPOINT_POINT * s) - (A * h);
-//     let R_bytes = R.compress().to_bytes();
-//
-//     // --- 6. Rv = sBv - hV ---
-//     let Rv = (Bv * s) - (V * h);
-//     let Rv_bytes = Rv.compress().to_bytes();
-//
-//     // --- 7. hcheck = hash4(...) ---
-//     let mut h_msg = Vec::new();
-//     h_msg.extend_from_slice(&A_bytes);
-//     h_msg.extend_from_slice(&V_bytes);
-//     h_msg.extend_from_slice(&R_bytes);
-//     h_msg.extend_from_slice(&Rv_bytes);
-//     h_msg.extend_from_slice(M);
-//
-//     let hcheck_hash = hashi(4, &h_msg);
-//     let hcheck = Scalar::from_bytes_mod_order_wide(&hcheck_hash);
-//
-//     // --- 8. if bytes_equal(h, hcheck) ---
-//     if h != hcheck {
-//         return None;
-//     }
-//
-//     // --- 9. Success: return v ---
-//     // cV means V multiplied by cofactor (8)
-//     let cV_point = V.mul_by_cofactor();
-//     let cV_bytes = cV_point.compress().to_bytes();
-//
-//     let v_hash_full = hashi(5, &cV_bytes);
-//     let mut v = [0u8; 32];
-//     v.copy_from_slice(&v_hash_full[0..32]);
-//
-//     Some(v)
-// }
+
+#[cfg(target_os = "android")]
+use jni::JNIEnv;
+#[cfg(target_os = "android")]
+use jni::objects::{JByteArray, JObject, JValue};
+#[cfg(target_os = "android")]
+use jni::sys::{jbyteArray, jclass, jobject};
+
+#[cfg(target_os = "android")]
+fn create_byte_array(env: &mut JNIEnv, bytes: &[u8]) -> jni::errors::Result<jbyteArray> {
+    let array = env.byte_array_from_slice(bytes)?;
+    Ok(array.into_raw())
+}
+
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_expo_modules_libsignaldezire_LibsignalDezireModule_genKeyPair(
+    mut env: JNIEnv,
+    _class: jclass,
+) -> jobject {
+    let keys = gen_keypair();
+
+    let map_class = env.find_class("java/util/HashMap").unwrap();
+    let map = env.new_object(map_class, "()V", &[]).unwrap();
+
+    let secret_array = create_byte_array(&mut env, &keys.secret).unwrap();
+    let public_array = create_byte_array(&mut env, &keys.public).unwrap();
+
+    let secret_key = env.new_string("secret").unwrap();
+    let public_key = env.new_string("public").unwrap();
+
+    let secret_key_obj = JObject::from(secret_key);
+    let secret_array_obj = unsafe { JObject::from_raw(secret_array) };
+    let public_key_obj = JObject::from(public_key);
+    let public_array_obj = unsafe { JObject::from_raw(public_array) };
+
+    env.call_method(
+        &map,
+        "put",
+        "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+        &[
+            JValue::Object(&secret_key_obj),
+            JValue::Object(&secret_array_obj),
+        ],
+    )
+    .unwrap();
+
+    env.call_method(
+        &map,
+        "put",
+        "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+        &[
+            JValue::Object(&public_key_obj),
+            JValue::Object(&public_array_obj),
+        ],
+    )
+    .unwrap();
+
+    map.into_raw()
+}
+
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_expo_modules_libsignaldezire_LibsignalDezireModule_vxeddsaSign(
+    mut env: JNIEnv,
+    _class: jclass,
+    k_byte_array: jbyteArray,
+    m_byte_array: jbyteArray,
+    z_byte_array: jbyteArray,
+) -> jobject {
+    let k_obj = unsafe { JByteArray::from_raw(k_byte_array) };
+    let m_obj = unsafe { JByteArray::from_raw(m_byte_array) };
+    let z_obj = unsafe { JByteArray::from_raw(z_byte_array) };
+
+    let k = env.convert_byte_array(&k_obj).unwrap();
+    let m = env.convert_byte_array(&m_obj).unwrap();
+    let z = env.convert_byte_array(&z_obj).unwrap();
+
+    // Check lengths securely? Or just assume caller is correct?
+    // Swift/TS checks lengths. We can do simple check.
+    if k.len() != 32 || m.len() != 32 || z.len() != 32 {
+        let exception_class = env
+            .find_class("java/lang/IllegalArgumentException")
+            .unwrap();
+        env.throw_new(exception_class, "Inputs must be 32 bytes")
+            .unwrap();
+        return JObject::null().into_raw();
+    }
+
+    let k_arr: [u8; 32] = k.try_into().unwrap();
+    let m_arr: [u8; 32] = m.try_into().unwrap();
+    let z_arr: [u8; 32] = z.try_into().unwrap();
+
+    let output = vxeddsa_sign(&k_arr, &m_arr, &z_arr);
+
+    let map_class = env.find_class("java/util/HashMap").unwrap();
+    let map = env.new_object(map_class, "()V", &[]).unwrap();
+
+    let signature_array = create_byte_array(&mut env, &output.signature).unwrap();
+    let vfr_array = create_byte_array(&mut env, &output.vfr).unwrap();
+
+    let signature_key = env.new_string("signature").unwrap();
+    let vfr_key = env.new_string("vfr").unwrap();
+
+    let signature_key_obj = JObject::from(signature_key);
+    let signature_array_obj = unsafe { JObject::from_raw(signature_array) };
+    let vfr_key_obj = JObject::from(vfr_key);
+    let vfr_array_obj = unsafe { JObject::from_raw(vfr_array) };
+
+    env.call_method(
+        &map,
+        "put",
+        "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+        &[
+            JValue::Object(&signature_key_obj),
+            JValue::Object(&signature_array_obj),
+        ],
+    )
+    .unwrap();
+
+    env.call_method(
+        &map,
+        "put",
+        "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+        &[JValue::Object(&vfr_key_obj), JValue::Object(&vfr_array_obj)],
+    )
+    .unwrap();
+
+    map.into_raw()
+}
+
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_expo_modules_libsignaldezire_LibsignalDezireModule_vxeddsaVerify(
+    mut env: JNIEnv,
+    _class: jclass,
+    u_byte_array: jbyteArray,
+    m_byte_array: jbyteArray,
+    signature_byte_array: jbyteArray,
+) -> jbyteArray {
+    let u_obj = unsafe { JByteArray::from_raw(u_byte_array) };
+    let m_obj = unsafe { JByteArray::from_raw(m_byte_array) };
+    let sig_obj = unsafe { JByteArray::from_raw(signature_byte_array) };
+
+    let u = env.convert_byte_array(&u_obj).unwrap();
+    let m = env.convert_byte_array(&m_obj).unwrap();
+    let sig = env.convert_byte_array(&sig_obj).unwrap();
+
+    if u.len() != 32 || m.len() != 32 || sig.len() != 96 {
+        // Return null or throw logic
+        return std::ptr::null_mut();
+    }
+
+    let u_arr: [u8; 32] = u.try_into().unwrap();
+    let m_arr: [u8; 32] = m.try_into().unwrap();
+    let sig_arr: [u8; 96] = sig.try_into().unwrap();
+
+    let mut v_out = [0u8; 32];
+
+    // Call the rust signature we implemented
+    let valid = vxeddsa_verify(&u_arr, &m_arr, &sig_arr, &mut v_out);
+
+    if valid {
+        let out_array = create_byte_array(&mut env, &v_out).unwrap();
+        out_array
+    } else {
+        std::ptr::null_mut()
+    }
+}

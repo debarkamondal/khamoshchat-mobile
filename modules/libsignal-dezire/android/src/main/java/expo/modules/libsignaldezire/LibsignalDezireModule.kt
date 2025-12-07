@@ -2,49 +2,43 @@ package expo.modules.libsignaldezire
 
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import java.net.URL
 
 class LibsignalDezireModule : Module() {
   // Each module class must implement the definition function. The definition consists of components
   // that describes the module's functionality and behavior.
   // See https://docs.expo.dev/modules/module-api for more details about available components.
   override fun definition() = ModuleDefinition {
-    // Sets the name of the module that JavaScript code will use to refer to the module. Takes a string as an argument.
-    // Can be inferred from module's class name, but it's recommended to set it explicitly for clarity.
+    // Sets the name of the module that JavaScript code will use to refer to the module. Takes a
+    // string as an argument.
+    // Can be inferred from module's class name, but it's recommended to set it explicitly for
+    // clarity.
     // The module will be accessible from `requireNativeModule('LibsignalDezire')` in JavaScript.
     Name("LibsignalDezire")
 
-    // Defines constant property on the module.
-    Constant("PI") {
-      Math.PI
-    }
-
-    // Defines event names that the module can send to JavaScript.
-    Events("onChange")
-
-    // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
-    Function("hello") {
-      "Hello world! 👋"
-    }
-
     // Defines a JavaScript function that always returns a Promise and whose native code
     // is by default dispatched on the different thread than the JavaScript runtime runs on.
-    AsyncFunction("setValueAsync") { value: String ->
-      // Send an event to JavaScript.
-      sendEvent("onChange", mapOf(
-        "value" to value
-      ))
+
+    AsyncFunction("genKeyPair") { genKeyPair() }
+
+    AsyncFunction("vxeddsaSign") { k: ByteArray, m: ByteArray, z: ByteArray ->
+      vxeddsaSign(k, m, z)
     }
 
-    // Enables the module to be used as a native view. Definition components that are accepted as part of
-    // the view definition: Prop, Events.
-    View(LibsignalDezireView::class) {
-      // Defines a setter for the `url` prop.
-      Prop("url") { view: LibsignalDezireView, url: URL ->
-        view.webView.loadUrl(url.toString())
-      }
-      // Defines an event that the view can send to JavaScript.
-      Events("onLoad")
+    AsyncFunction("vxeddsaVerify") { u: ByteArray, m: ByteArray, signature: ByteArray ->
+      vxeddsaVerify(u, m, signature)
     }
+  }
+
+  companion object {
+    init {
+      System.loadLibrary("libsignal_dezire")
+    }
+
+    @JvmStatic external fun genKeyPair(): Map<String, Any>
+
+    @JvmStatic external fun vxeddsaSign(k: ByteArray, m: ByteArray, z: ByteArray): Map<String, Any>
+
+    @JvmStatic
+    external fun vxeddsaVerify(u: ByteArray, m: ByteArray, signature: ByteArray): ByteArray?
   }
 }
