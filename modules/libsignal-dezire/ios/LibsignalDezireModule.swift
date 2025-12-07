@@ -19,6 +19,29 @@ public class LibsignalDezireModule: Module {
     Events("onChange")
 
     // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
+    AsyncFunction("vxeddsaSign") { (uData: Data, MData: Data, zData: Data) -> [String: Data] in
+        let u = [UInt8](uData)
+        let M = [UInt8](MData)
+        let z = [UInt8](zData)
+
+        guard u.count == 32, M.count == 32, z.count == 32 else {
+            throw NSError(domain: "LibsignalDezire", code: 1, userInfo: [NSLocalizedDescriptionKey: "Inputs must be 32 bytes"])
+        }
+        var output = vxeddsa_sign(u, M, z)
+
+        // Access the C-tuples/arrays.
+        let signature = withUnsafePointer(to: &output.signature) {
+            Data(bytes: $0, count: 96)
+        }
+        let vfr_output = withUnsafePointer(to: &output.vfr) {
+            Data(bytes: $0, count: 32)
+        }
+
+        return [
+            "signature": signature,
+            "vfr": vfr_output
+        ]
+    }
     AsyncFunction("genKeyPair") { () -> [String: Data] in
         var keys = gen_keypair()
 

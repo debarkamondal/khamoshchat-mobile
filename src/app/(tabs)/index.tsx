@@ -1,3 +1,5 @@
+import { KeyPair } from "@/modules/libsignal-dezire";
+import * as Crypto from "expo-crypto";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 import StyledButton from "@/src/components/StyledButton";
 import StyledText from "@/src/components/StyledText";
@@ -11,14 +13,25 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export default function Index() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const [keyPair, setKeyPair] = useState<{ public: string, secret: string }>({
-    public: "",
-    secret: "",
+  const [keyPair, setKeyPair] = useState<KeyPair>({
+    public: new Uint8Array(32),
+    secret: new Uint8Array(32),
   });
+  const sign = async () => {
+    const keypair = await LibsignalDezireModule.genKeyPair()
+    const message = "Hello World";
+    const hash = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      message
+    );
+    const match = hash.match(/.{1,2}/g);
+    const bytes = new Uint8Array(match!.map((byte) => parseInt(byte, 16)));
+    const res = await LibsignalDezireModule.vxeddsaSign(keypair.secret, bytes, new Uint8Array(32));
+    console.log("Signature:", res.signature);
+    console.log("VFR:", res.vfr);
+  }
   useEffect(() => {
-    LibsignalDezireModule.genKeyPair().then((keyPair) => {
-      setKeyPair(keyPair);
-    });
+    sign();
   }, []);
 
   const styles = StyleSheet.create({
@@ -40,7 +53,6 @@ export default function Index() {
   return (
     <View style={styles.container}>
       <StyledText>Tab Home</StyledText>
-      <StyledText>{btoa(keyPair.secret)}</StyledText>
       <StyledButton
         style={styles.contactButton}
         onPress={() => router.push("/contacts")}

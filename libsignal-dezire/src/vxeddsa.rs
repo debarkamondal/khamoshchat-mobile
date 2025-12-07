@@ -27,6 +27,11 @@ pub struct KeyPair {
     pub secret: [u8; 32],
     pub public: [u8; 32],
 }
+#[repr(C)]
+pub struct VXEdDSAOutput {
+    pub signature: [u8; 96],
+    pub vfr: [u8; 32],
+}
 
 #[unsafe(no_mangle)]
 pub extern "C" fn gen_keypair() -> KeyPair {
@@ -60,8 +65,9 @@ pub extern "C" fn gen_keypair() -> KeyPair {
 ///
 /// This function will panic if the calculated scalar `r` happens to be zero, which is a
 /// statistically negligible event.
-pub fn vxeddsa_sign(k: [u8; 32], M: &[u8; 32], z: &[u8; 32]) -> ([u8; 96], [u8; 32]) {
-    let (a, A) = calculate_key_pair(k);
+#[unsafe(no_mangle)]
+pub extern "C" fn vxeddsa_sign(k: &[u8; 32], M: &[u8; 32], z: &[u8; 32]) -> VXEdDSAOutput {
+    let (a, A) = calculate_key_pair(*k);
 
     let a_bytes = A.compress().to_bytes();
     let mut point_msg = Vec::with_capacity(a_bytes.iter().len() + M.len());
@@ -133,7 +139,10 @@ pub fn vxeddsa_sign(k: [u8; 32], M: &[u8; 32], z: &[u8; 32]) -> ([u8; 96], [u8; 
     signature[64..96].copy_from_slice(&s.to_bytes());
 
     // Fixed: Returns 'v' (VRF output) instead of 'V_bytes' (Part of signature)
-    (signature, v)
+    VXEdDSAOutput {
+        signature: signature,
+        vfr: v,
+    }
 }
 
 /// Verifies a VXEdDSA signature and derives the VRF output.
