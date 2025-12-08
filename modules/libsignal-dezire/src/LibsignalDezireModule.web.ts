@@ -17,8 +17,11 @@ class LibsignalDezireModule extends NativeModule {
   ): Promise<Uint8Array | null> {
     return await this.nativeModule.vxeddsaVerify(u, M, signature);
   }
-  async genPubkey(k: Uint8Array): Promise<Uint8Array> {
-    return await this.nativeModule.genPubkey(k);
+  async genPubKey(k: Uint8Array): Promise<Uint8Array> {
+    return await this.nativeModule.genPubKey(k);
+  }
+  async genSecret(): Promise<Uint8Array> {
+    return await this.nativeModule.genSecret();
   }
   async genKeyPair(): Promise<KeyPair> {
     return await this.nativeModule.genKeyPair();

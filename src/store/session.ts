@@ -10,13 +10,13 @@ type Session = {
     number: number;
   };
   image: string;
-  iKey: { secret: Uint8Array; public: Uint8Array };
-  preKey: { secret: Uint8Array; public: Uint8Array };
+  iKey: Uint8Array;
+  preKey: Uint8Array;
   isRegistered: boolean;
   initSession: (phone: {
     countryCode: string;
     number: number;
-  }) => Promise<{ secret: Uint8Array; public: Uint8Array }>;
+  }) => Promise<{ iKey: Uint8Array; preKey: Uint8Array }>;
   clearSession: () => Promise<void>;
   markSessionRegistered: () => void;
   markSessionUnregistered: () => void;
@@ -30,8 +30,8 @@ const useSession = create(
       },
       image: "",
       isRegistered: true,
-      iKey: { secret: new Uint8Array(), public: new Uint8Array() },
-      preKey: { secret: new Uint8Array(), public: new Uint8Array() },
+      iKey: new Uint8Array(),
+      preKey: new Uint8Array(),
 
       markSessionUnregistered: () => {
         set((state) => {
@@ -57,16 +57,16 @@ const useSession = create(
               otks: [],
               isRegistered: false,
               phone: { countryCode: "", number: 0 },
-              iKey: { public: new Uint8Array(), secret: new Uint8Array() },
-              preKey: { public: new Uint8Array(), secret: new Uint8Array() },
+              iKey: new Uint8Array(),
+              preKey: new Uint8Array(),
             };
           }
         });
       },
       initSession: async (phone) => {
         await deleteItemAsync("otks");
-        const iKey = await LibsignalDezireModule.genKeyPair()
-        const preKey = await LibsignalDezireModule.genKeyPair();
+        const iKey = await LibsignalDezireModule.genSecret()
+        const preKey = await LibsignalDezireModule.genSecret();
         if (!iKey && !preKey) {
           Alert.alert(
             "Error",
@@ -84,21 +84,15 @@ const useSession = create(
               return {
                 ...state,
                 phone,
-                iKey: {
-                  public: iKey.public,
-                  secret: iKey.secret,
-                },
-                preKey: {
-                  public: preKey.public,
-                  secret: preKey.secret,
-                },
+                iKey,
+                preKey,
               };
             }
           });
         }
         return {
-          public: iKey.public,
-          secret: iKey.secret,
+          iKey,
+          preKey,
         };
       },
     }),
