@@ -18,20 +18,32 @@ export default function Index() {
     secret: new Uint8Array(32),
   });
   const sign = async () => {
-    const keypair = await LibsignalDezireModule.genKeyPair()
+    const keypair = await LibsignalDezireModule.genKeyPair();
     const message = "Hello World";
     const hash = await Crypto.digestStringAsync(
       Crypto.CryptoDigestAlgorithm.SHA256,
-      message
+      message,
     );
     const match = hash.match(/.{1,2}/g);
     const bytes = new Uint8Array(match!.map((byte) => parseInt(byte, 16)));
-    const res = await LibsignalDezireModule.vxeddsaSign(keypair.secret, bytes, new Uint8Array(32));
-    console.log("Signature:", res.signature);
-    console.log("VFR:", res.vfr);
-    const verificationResult = await LibsignalDezireModule.vxeddsaVerify(keypair.public, bytes, res.signature);
-    console.log("Verification Result:", verificationResult);
-  }
+    const res = await LibsignalDezireModule.vxeddsaSign(
+      keypair.secret,
+      bytes,
+      new Uint8Array(32),
+    );
+    // console.log("Signature:", res.signature);
+    // console.log("VFR:", res.vfr);
+    // const verificationResult = await LibsignalDezireModule.vxeddsaVerify(
+    //   keypair.public,
+    //   bytes,
+    //   res.signature,
+    // );
+    // console.log("Verification Result:", verificationResult);
+    const pubkey = await LibsignalDezireModule.genPubkey(keypair.secret);
+    console.log("PubKey: ", pubkey);
+    console.log("KeypairPub: ", keypair.public);
+    console.log("Secret: ", keypair.secret);
+  };
   useEffect(() => {
     sign();
   }, []);

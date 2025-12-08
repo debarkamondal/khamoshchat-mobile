@@ -24,6 +24,8 @@ typedef struct VXEdDSAOutput {
 
 struct KeyPair gen_keypair(void);
 
+void gen_pubkey(const uint8_t *k, uint8_t *pubkey );
+
 /**
  * Computes a VXEdDSA signature and generates the associated VRF output.
  *

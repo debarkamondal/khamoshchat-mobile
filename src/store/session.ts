@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import { setItem, getItem, deleteItemAsync } from "expo-secure-store";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { ed25519 } from "@noble/curves/ed25519.js";
 import { Alert } from "react-native";
+import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 
 type Session = {
   phone: {
@@ -10,13 +10,13 @@ type Session = {
     number: number;
   };
   image: string;
-  iKey: { private: Uint8Array; public: Uint8Array };
-  preKey: { private: Uint8Array; public: Uint8Array };
+  iKey: { secret: Uint8Array; public: Uint8Array };
+  preKey: { secret: Uint8Array; public: Uint8Array };
   isRegistered: boolean;
   initSession: (phone: {
     countryCode: string;
     number: number;
-  }) => Promise<{ private: Uint8Array; public: Uint8Array }>;
+  }) => Promise<{ secret: Uint8Array; public: Uint8Array }>;
   clearSession: () => Promise<void>;
   markSessionRegistered: () => void;
   markSessionUnregistered: () => void;
@@ -30,8 +30,8 @@ const useSession = create(
       },
       image: "",
       isRegistered: true,
-      iKey: { private: new Uint8Array(), public: new Uint8Array() },
-      preKey: { private: new Uint8Array(), public: new Uint8Array() },
+      iKey: { secret: new Uint8Array(), public: new Uint8Array() },
+      preKey: { secret: new Uint8Array(), public: new Uint8Array() },
 
       markSessionUnregistered: () => {
         set((state) => {
@@ -57,16 +57,16 @@ const useSession = create(
               otks: [],
               isRegistered: false,
               phone: { countryCode: "", number: 0 },
-              iKey: { public: new Uint8Array(), private: new Uint8Array() },
-              preKey: { public: new Uint8Array(), private: new Uint8Array() },
+              iKey: { public: new Uint8Array(), secret: new Uint8Array() },
+              preKey: { public: new Uint8Array(), secret: new Uint8Array() },
             };
           }
         });
       },
       initSession: async (phone) => {
         await deleteItemAsync("otks");
-        const iKey = ed25519.keygen();
-        const preKey = ed25519.keygen();
+        const iKey = await LibsignalDezireModule.genKeyPair()
+        const preKey = await LibsignalDezireModule.genKeyPair();
         if (!iKey && !preKey) {
           Alert.alert(
             "Error",
@@ -85,20 +85,20 @@ const useSession = create(
                 ...state,
                 phone,
                 iKey: {
-                  public: iKey.publicKey,
-                  private: iKey.secretKey,
+                  public: iKey.public,
+                  secret: iKey.secret,
                 },
                 preKey: {
-                  public: preKey.publicKey,
-                  private: preKey.secretKey,
+                  public: preKey.public,
+                  secret: preKey.secret,
                 },
               };
             }
           });
         }
         return {
-          public: iKey.publicKey,
-          private: iKey.secretKey,
+          public: iKey.public,
+          secret: iKey.secret,
         };
       },
     }),

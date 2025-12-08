@@ -44,6 +44,14 @@ pub extern "C" fn gen_keypair() -> KeyPair {
     }
 }
 
+#[unsafe(no_mangle)]
+pub extern "C" fn gen_pubkey(k: &[u8; 32], pubkey: *mut [u8; 32]) {
+    let secret = StaticSecret::from(*k);
+    unsafe {
+        (*pubkey).copy_from_slice(&PublicKey::from(&secret).as_bytes()[0..32]);
+    }
+}
+
 /// Computes a VXEdDSA signature and generates the associated VRF output.
 ///
 /// This function implements the signing logic specified in the VXEdDSA protocol (Signal).
@@ -51,9 +59,9 @@ pub extern "C" fn gen_keypair() -> KeyPair {
 ///
 /// # Arguments
 ///
-/// * `k` - The 32-byte Montgomary private key. Note that this is the raw seed, not the clamped scalar.
-/// * `M` - A reference to the 32-byte message to be signed.
-/// * `z` - A 32-byte high-entropy nonce (randomness). This is crucial for the security of the scheme.
+/// * `k` - The 32-byte Montgomary private key (raw pointer).
+/// * `M` - A reference to the 32-byte message to be signed (raw pointer).
+/// * `z` - A 32-byte high-entropy nonce (randomness) (raw pointer).
 ///
 /// # Returns
 ///
@@ -430,4 +438,29 @@ pub extern "C" fn Java_expo_modules_libsignaldezire_LibsignalDezireModule_vxedds
     } else {
         std::ptr::null_mut()
     }
+}
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_expo_modules_libsignaldezire_LibsignalDezireModule_genPubkey(
+    mut env: JNIEnv,
+    _class: jclass,
+    k_byte_array: jbyteArray,
+) -> jbyteArray {
+    let k_obj = unsafe { JByteArray::from_raw(k_byte_array) };
+
+    let k = env.convert_byte_array(&k_obj).unwrap();
+
+    if k.len() != 32 {
+        // Return null or throw logic
+        return std::ptr::null_mut();
+    }
+
+    let k_arr: [u8; 32] = k.try_into().unwrap();
+
+    let mut k_out = [0u8; 32];
+
+    // Call the rust signature we implemented
+    gen_pubkey(k, &mut k_out);
+
+    create_byte_array(&mut env, &k_out).unwrap();
 }

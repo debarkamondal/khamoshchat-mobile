@@ -22,7 +22,7 @@ export default function otp() {
 
   const submit = async (otp: number) => {
     if (!preKey || !iKey) return;
-    const signedPreKey = ed25519.sign(preKey.public, iKey.private);
+    const signedPreKey = ed25519.sign(preKey.public, iKey.secret);
     const b64Sign = btoa(String.fromCharCode(...signedPreKey));
     const b64PreKey = btoa(String.fromCharCode(...preKey.public));
     const b64Otks = await genOtks();
