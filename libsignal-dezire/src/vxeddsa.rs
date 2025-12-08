@@ -52,6 +52,17 @@ pub extern "C" fn gen_pubkey(k: &[u8; 32], pubkey: *mut [u8; 32]) {
     }
 }
 
+#[unsafe(no_mangle)]
+pub extern "C" fn gen_secret(out: *mut u8) {
+    if !out.is_null() {
+        let secret = StaticSecret::random_from_rng(&mut OsRng);
+        unsafe {
+            let out_slice = std::slice::from_raw_parts_mut(out, 32);
+            out_slice.copy_from_slice(&secret.to_bytes());
+        }
+    }
+}
+
 /// Computes a VXEdDSA signature and generates the associated VRF output.
 ///
 /// This function implements the signing logic specified in the VXEdDSA protocol (Signal).
@@ -463,4 +474,15 @@ pub extern "C" fn Java_expo_modules_libsignaldezire_LibsignalDezireModule_genPub
     gen_pubkey(&k_arr, &mut k_out);
 
     create_byte_array(&mut env, &k_out).unwrap()
+}
+
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_expo_modules_libsignaldezire_LibsignalDezireModule_genSecret(
+    mut env: JNIEnv,
+    _class: jclass,
+) -> jbyteArray {
+    let mut secret_out = [0u8; 32];
+    gen_secret(secret_out.as_mut_ptr());
+    create_byte_array(&mut env, &secret_out).unwrap()
 }

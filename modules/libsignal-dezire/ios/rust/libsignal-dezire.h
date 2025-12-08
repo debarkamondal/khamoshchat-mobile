@@ -26,6 +26,8 @@ struct KeyPair gen_keypair(void);
 
 void gen_pubkey(const uint8_t *k, uint8_t *pubkey );
 
+void gen_secret(uint8_t *out);
+
 /**
  * Computes a VXEdDSA signature and generates the associated VRF output.
  *

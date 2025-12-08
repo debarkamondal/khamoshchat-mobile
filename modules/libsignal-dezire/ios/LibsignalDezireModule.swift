@@ -43,6 +43,12 @@ public class LibsignalDezireModule: Module {
 
             return Data(pubkey)
         }
+
+        AsyncFunction("genSecret") { () -> Data in
+            var secret = [UInt8](repeating: 0, count: 32)
+            gen_secret(&secret)
+            return Data(secret)
+        }
         AsyncFunction("genKeyPair") { () -> [String: Data] in
             var keys = gen_keypair()
 

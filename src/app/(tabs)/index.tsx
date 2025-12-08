@@ -40,9 +40,11 @@ export default function Index() {
     // );
     // console.log("Verification Result:", verificationResult);
     const pubkey = await LibsignalDezireModule.genPubKey(keypair.secret);
+    const newSecret = await LibsignalDezireModule.genSecret();
     console.log("PubKey: ", pubkey);
     console.log("KeypairPub: ", keypair.public);
     console.log("Secret: ", keypair.secret);
+    console.log("New Secret: ", newSecret);
   };
   useEffect(() => {
     sign();
