@@ -20,7 +20,7 @@ class LibsignalDezireModule : Module() {
 
     AsyncFunction("genKeyPair") { genKeyPair() }
 
-    AsyncFunction("genPubkey") { k: ByteArray -> genPubkey(k) }
+    AsyncFunction("genPubKey") { k: ByteArray -> genPubKey(k) }
 
     AsyncFunction("vxeddsaSign") { k: ByteArray, m: ByteArray, z: ByteArray ->
       vxeddsaSign(k, m, z)
@@ -43,6 +43,6 @@ class LibsignalDezireModule : Module() {
     @JvmStatic
     external fun vxeddsaVerify(u: ByteArray, m: ByteArray, signature: ByteArray): ByteArray?
 
-    @JvmStatic external fun genPubkey(k: ByteArray): ByteArray?
+    @JvmStatic external fun genPubKey(k: ByteArray): ByteArray?
   }
 }

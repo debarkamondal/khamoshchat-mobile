@@ -39,7 +39,7 @@ export default function Index() {
     //   res.signature,
     // );
     // console.log("Verification Result:", verificationResult);
-    const pubkey = await LibsignalDezireModule.genPubkey(keypair.secret);
+    const pubkey = await LibsignalDezireModule.genPubKey(keypair.secret);
     console.log("PubKey: ", pubkey);
     console.log("KeypairPub: ", keypair.public);
     console.log("Secret: ", keypair.secret);

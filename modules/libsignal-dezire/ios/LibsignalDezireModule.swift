@@ -36,7 +36,7 @@ public class LibsignalDezireModule: Module {
                 "vfr": vfr_output,
             ]
         }
-        AsyncFunction("genPubkey") { (kData: Data) -> Data in
+        AsyncFunction("genPubKey") { (kData: Data) -> Data in
             let k = [UInt8](kData)
             var pubkey = [UInt8](repeating: 0, count: 32)
             gen_pubkey(k, &pubkey)

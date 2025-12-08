@@ -441,7 +441,7 @@ pub extern "C" fn Java_expo_modules_libsignaldezire_LibsignalDezireModule_vxedds
 }
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
-pub extern "C" fn Java_expo_modules_libsignaldezire_LibsignalDezireModule_genPubkey(
+pub extern "C" fn Java_expo_modules_libsignaldezire_LibsignalDezireModule_genPubKey(
     mut env: JNIEnv,
     _class: jclass,
     k_byte_array: jbyteArray,
