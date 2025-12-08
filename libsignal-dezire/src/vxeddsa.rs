@@ -460,7 +460,7 @@ pub extern "C" fn Java_expo_modules_libsignaldezire_LibsignalDezireModule_genPub
     let mut k_out = [0u8; 32];
 
     // Call the rust signature we implemented
-    gen_pubkey(k, &mut k_out);
+    gen_pubkey(&k_arr, &mut k_out);
 
-    create_byte_array(&mut env, &k_out).unwrap();
+    create_byte_array(&mut env, &k_out).unwrap()
 }
