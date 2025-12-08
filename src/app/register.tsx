@@ -9,6 +9,7 @@ import StyledText from "@/src/components/StyledText";
 import { useMemo, useState } from "react";
 import "./../polyfills/crypto";
 import useSession from "@/src/store/session";
+import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 
 export default function register() {
   const colors = useTheme();
@@ -31,11 +32,11 @@ export default function register() {
           isPreferred: true,
           onPress: async () => {
             await clearSession();
-            const iKey = await initSession({
+            const session = await initSession({
               countryCode,
               number: parseInt(phone as string),
             });
-            const b64iKey = btoa(String.fromCharCode(...iKey.public));
+            const b64iKey = btoa(String.fromCharCode(...await LibsignalDezireModule.genPubKey(session.iKey)));
             const res = await fetch(
               "https://identity.dkmondal.in/test/register/phone",
               {

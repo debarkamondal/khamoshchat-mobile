@@ -4,12 +4,11 @@ import { KeyPair, VXEdDSAOutput } from "./LibsignalDezire.types";
 
 declare class LibsignalDezireModule extends NativeModule {
   genKeyPair(): Promise<KeyPair>;
-  genPubKey(k: Uint8Array): Promise<Uint8Array>;
   genSecret(): Promise<Uint8Array>;
+  genPubKey(k: Uint8Array): Promise<Uint8Array>;
   vxeddsaSign(
     k: Uint8Array,
     M: Uint8Array,
-    z: Uint8Array,
   ): Promise<VXEdDSAOutput>;
   vxeddsaVerify(
     u: Uint8Array,

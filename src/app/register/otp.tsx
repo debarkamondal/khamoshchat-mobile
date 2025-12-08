@@ -8,6 +8,7 @@ import { ed25519 } from "@noble/curves/ed25519.js";
 import { StyleSheet } from "react-native";
 import { genOtks } from "@/src/utils/otks";
 import { router } from "expo-router";
+import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 
 export default function otp() {
   const colors = useTheme();
@@ -22,9 +23,9 @@ export default function otp() {
 
   const submit = async (otp: number) => {
     if (!preKey || !iKey) return;
-    const signedPreKey = ed25519.sign(preKey.public, iKey.secret);
-    const b64Sign = btoa(String.fromCharCode(...signedPreKey));
-    const b64PreKey = btoa(String.fromCharCode(...preKey.public));
+    const { signature } = await LibsignalDezireModule.vxeddsaSign(await LibsignalDezireModule.genPubKey(preKey), iKey);
+    const b64Sign = btoa(String.fromCharCode(...signature));
+    const b64PreKey = btoa(String.fromCharCode(...await LibsignalDezireModule.genPubKey(preKey)));
     const b64Otks = await genOtks();
     const res = await fetch("https://identity.dkmondal.in/test/register/otp", {
       method: "POST",

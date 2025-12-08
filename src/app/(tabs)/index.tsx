@@ -29,7 +29,6 @@ export default function Index() {
     const res = await LibsignalDezireModule.vxeddsaSign(
       keypair.secret,
       bytes,
-      new Uint8Array(32),
     );
     // console.log("Signature:", res.signature);
     // console.log("VFR:", res.vfr);

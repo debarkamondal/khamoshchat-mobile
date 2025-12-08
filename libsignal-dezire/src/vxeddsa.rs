@@ -45,21 +45,18 @@ pub extern "C" fn gen_keypair() -> KeyPair {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn gen_pubkey(k: &[u8; 32], pubkey: *mut [u8; 32]) {
-    let secret = StaticSecret::from(*k);
+pub extern "C" fn gen_secret(secret_out: *mut [u8; 32]) {
+    let secret = StaticSecret::random_from_rng(&mut OsRng);
     unsafe {
-        (*pubkey).copy_from_slice(&PublicKey::from(&secret).as_bytes()[0..32]);
+        (*secret_out).copy_from_slice(&secret.to_bytes());
     }
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn gen_secret(out: *mut u8) {
-    if !out.is_null() {
-        let secret = StaticSecret::random_from_rng(&mut OsRng);
-        unsafe {
-            let out_slice = std::slice::from_raw_parts_mut(out, 32);
-            out_slice.copy_from_slice(&secret.to_bytes());
-        }
+pub extern "C" fn gen_pubkey(k: &[u8; 32], pubkey: *mut [u8; 32]) {
+    let secret = StaticSecret::from(*k);
+    unsafe {
+        (*pubkey).copy_from_slice(&PublicKey::from(&secret).as_bytes()[0..32]);
     }
 }
 
@@ -85,7 +82,7 @@ pub extern "C" fn gen_secret(out: *mut u8) {
 /// This function will panic if the calculated scalar `r` happens to be zero, which is a
 /// statistically negligible event.
 #[unsafe(no_mangle)]
-pub extern "C" fn vxeddsa_sign(k: &[u8; 32], M: &[u8; 32], z: &[u8; 32]) -> VXEdDSAOutput {
+pub extern "C" fn vxeddsa_sign(k: &[u8; 32], M: &[u8; 32]) -> VXEdDSAOutput {
     let (a, A) = calculate_key_pair(*k);
 
     let a_bytes = A.compress().to_bytes();
@@ -110,7 +107,15 @@ pub extern "C" fn vxeddsa_sign(k: &[u8; 32], M: &[u8; 32], z: &[u8; 32]) -> VXEd
     let mut r_msg = Vec::new();
     r_msg.extend_from_slice(a.as_bytes());
     r_msg.extend_from_slice(&V_bytes);
-    r_msg.extend_from_slice(z);
+    use rand_core::RngCore;
+    let mut z = [0u8; 32];
+    let mut rng = OsRng;
+    rng.fill_bytes(&mut z);
+
+    let mut r_msg = Vec::new();
+    r_msg.extend_from_slice(a.as_bytes());
+    r_msg.extend_from_slice(&V_bytes);
+    r_msg.extend_from_slice(&z);
 
     let r_hash = hashi(3, &r_msg);
 
@@ -349,19 +354,16 @@ pub extern "C" fn Java_expo_modules_libsignaldezire_LibsignalDezireModule_vxedds
     _class: jclass,
     k_byte_array: jbyteArray,
     m_byte_array: jbyteArray,
-    z_byte_array: jbyteArray,
 ) -> jobject {
     let k_obj = unsafe { JByteArray::from_raw(k_byte_array) };
     let m_obj = unsafe { JByteArray::from_raw(m_byte_array) };
-    let z_obj = unsafe { JByteArray::from_raw(z_byte_array) };
 
     let k = env.convert_byte_array(&k_obj).unwrap();
     let m = env.convert_byte_array(&m_obj).unwrap();
-    let z = env.convert_byte_array(&z_obj).unwrap();
 
     // Check lengths securely? Or just assume caller is correct?
     // Swift/TS checks lengths. We can do simple check.
-    if k.len() != 32 || m.len() != 32 || z.len() != 32 {
+    if k.len() != 32 || m.len() != 32 {
         let exception_class = env
             .find_class("java/lang/IllegalArgumentException")
             .unwrap();
@@ -372,9 +374,8 @@ pub extern "C" fn Java_expo_modules_libsignaldezire_LibsignalDezireModule_vxedds
 
     let k_arr: [u8; 32] = k.try_into().unwrap();
     let m_arr: [u8; 32] = m.try_into().unwrap();
-    let z_arr: [u8; 32] = z.try_into().unwrap();
 
-    let output = vxeddsa_sign(&k_arr, &m_arr, &z_arr);
+    let output = vxeddsa_sign(&k_arr, &m_arr);
 
     let map_class = env.find_class("java/util/HashMap").unwrap();
     let map = env.new_object(map_class, "()V", &[]).unwrap();
@@ -482,7 +483,7 @@ pub extern "C" fn Java_expo_modules_libsignaldezire_LibsignalDezireModule_genSec
     mut env: JNIEnv,
     _class: jclass,
 ) -> jbyteArray {
-    let mut secret_out = [0u8; 32];
-    gen_secret(secret_out.as_mut_ptr());
-    create_byte_array(&mut env, &secret_out).unwrap()
+    let mut secret = [0u8; 32];
+    gen_secret(&mut secret);
+    create_byte_array(&mut env, &secret).unwrap()
 }

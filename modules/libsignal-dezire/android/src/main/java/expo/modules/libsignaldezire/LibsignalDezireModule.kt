@@ -24,9 +24,7 @@ class LibsignalDezireModule : Module() {
 
     AsyncFunction("genSecret") { genSecret() }
 
-    AsyncFunction("vxeddsaSign") { k: ByteArray, m: ByteArray, z: ByteArray ->
-      vxeddsaSign(k, m, z)
-    }
+    AsyncFunction("vxeddsaSign") { k: ByteArray, m: ByteArray -> vxeddsaSign(k, m) }
 
     AsyncFunction("vxeddsaVerify") { u: ByteArray, m: ByteArray, signature: ByteArray ->
       vxeddsaVerify(u, m, signature)
@@ -40,7 +38,7 @@ class LibsignalDezireModule : Module() {
 
     @JvmStatic external fun genKeyPair(): Map<String, Any>
 
-    @JvmStatic external fun vxeddsaSign(k: ByteArray, m: ByteArray, z: ByteArray): Map<String, Any>
+    @JvmStatic external fun vxeddsaSign(k: ByteArray, m: ByteArray): Map<String, Any>
 
     @JvmStatic
     external fun vxeddsaVerify(u: ByteArray, m: ByteArray, signature: ByteArray): ByteArray?
