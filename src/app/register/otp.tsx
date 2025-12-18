@@ -4,14 +4,13 @@ import { useTheme } from "@/src/hooks/useTheme";
 import useSession from "@/src/store/session";
 import StyledButton from "@/src/components/StyledButton";
 import OtpInput from "@/src/components/OtpInput";
-import { ed25519 } from "@noble/curves/ed25519.js";
 import { StyleSheet } from "react-native";
 import { genOtks } from "@/src/utils/otks";
 import { router } from "expo-router";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 
 export default function otp() {
-  const colors = useTheme();
+  const { colors } = useTheme();
   const session = useSession();
 
   const {
@@ -23,7 +22,7 @@ export default function otp() {
 
   const submit = async (otp: number) => {
     if (!preKey || !iKey) return;
-    const { signature } = await LibsignalDezireModule.vxeddsaSign(await LibsignalDezireModule.genPubKey(preKey), iKey);
+    const { signature, vrf } = await LibsignalDezireModule.vxeddsaSign(iKey, await LibsignalDezireModule.genPubKey(preKey));
     const b64Sign = btoa(String.fromCharCode(...signature));
     const b64PreKey = btoa(String.fromCharCode(...await LibsignalDezireModule.genPubKey(preKey)));
     const b64Otks = await genOtks();
@@ -33,8 +32,11 @@ export default function otp() {
         phone: phone.countryCode + phone.number,
         sign: b64Sign,
         preKey: b64PreKey,
-        otks: b64Otks,
+        iKey: btoa(String.fromCharCode(...await LibsignalDezireModule.genPubKey(iKey))),
+        vrf: btoa(String.fromCharCode(...vrf)),
+        // otks: b64Otks,
         otp,
+
       }),
     });
     if (res.status === 204) {

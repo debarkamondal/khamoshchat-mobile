@@ -26,13 +26,13 @@ public class LibsignalDezireModule: Module {
             let signature = withUnsafePointer(to: &output.signature) {
                 Data(bytes: $0, count: 96)
             }
-            let vfr_output = withUnsafePointer(to: &output.vfr) {
+            let vrf_output = withUnsafePointer(to: &output.vrf) {
                 Data(bytes: $0, count: 32)
             }
 
             return [
                 "signature": signature,
-                "vfr": vfr_output,
+                "vrf": vrf_output,
             ]
         }
         AsyncFunction("genPubKey") { (kData: Data) -> Data in

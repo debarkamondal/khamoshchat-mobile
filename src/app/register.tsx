@@ -12,7 +12,7 @@ import useSession from "@/src/store/session";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 
 export default function register() {
-  const colors = useTheme();
+  const { colors } = useTheme();
   const [phone, setPhone] = useState<string>();
   const [countryCode, setCountryCode] = useState<string>("+91");
 

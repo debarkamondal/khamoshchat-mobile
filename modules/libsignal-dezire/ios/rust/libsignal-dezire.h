@@ -19,7 +19,7 @@ typedef struct KeyPair {
 
 typedef struct VXEdDSAOutput {
   uint8_t signature[96];
-  uint8_t vfr[32];
+  uint8_t vrf[32];
 } VXEdDSAOutput;
 
 struct KeyPair gen_keypair(void);

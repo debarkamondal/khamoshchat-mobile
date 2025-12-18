@@ -29,7 +29,7 @@ const useSession = create(
         number: 0,
       },
       image: "",
-      isRegistered: true,
+      isRegistered: false,
       iKey: new Uint8Array(),
       preKey: new Uint8Array(),
 
