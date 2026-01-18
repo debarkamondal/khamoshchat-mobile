@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { StyleSheet, TextInput as Input, TextInputProps } from "react-native";
-import { useTheme } from "@/src/hooks/useTheme";
+import { useThemedStyles } from "@/src/hooks/useTheme";
 
 const StyledTextInput = ({ style: styles, ...restProps }: TextInputProps) => {
   const [isInFocus, setIsInFocus] = useState(false);
-  const {colors} = useTheme();
-  const defaultStyles = StyleSheet.create({
+  const defaultStyles = useThemedStyles((colors) => ({
     textInputDefault: {
       color: colors.textPrimary,
       borderWidth: 2,
@@ -16,7 +15,7 @@ const StyledTextInput = ({ style: styles, ...restProps }: TextInputProps) => {
     textInputActive: {
       borderColor: colors.accentPrimary,
     },
-  });
+  }));
   return (
     <Input
       style={StyleSheet.flatten([

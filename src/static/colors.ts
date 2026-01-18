@@ -1,22 +1,24 @@
 
-export type ColorGroup = {
-  [key: string]: {
-    ios: string;
-    android:
-      | {
-          dark: string;
-          light: string;
-        }
-      | string;
-    fallback: {
-      light: string;
-      dark: string;
-    };
+// Definition for a single color entry
+export type ColorDefinition = {
+  ios: string;
+  android:
+  | {
+    dark: string;
+    light: string;
+  }
+  | string;
+  fallback: {
+    light: string;
+    dark: string;
   };
 };
 
+// Generic type for color groups
+export type ColorGroup = Record<string, ColorDefinition>;
+
 // Expanded color definitions
-export const requiredColors: ColorGroup = {
+export const requiredColors = {
   // Text colors
   textPrimary: {
     ios: "label",
@@ -89,6 +91,14 @@ export const requiredColors: ColorGroup = {
     fallback: {
       light: "#FFA500",
       dark: "#FF8C00",
+    },
+  },
+  accentPrimaryDark: {
+    ios: "systemOrange",
+    android: "@android:color/holo_orange_dark",
+    fallback: {
+      light: "#E69500",
+      dark: "#CC7A00",
     },
   },
   // accentSecondary: {

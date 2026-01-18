@@ -1,10 +1,10 @@
 import StyledButton from "@/src/components/StyledButton";
 import StyledText from "@/src/components/StyledText";
 import StyledTextInput from "@/src/components/StyledTextInput";
-import { useTheme } from "@/src/hooks/useTheme";
+import { useTheme, useThemedStyles } from "@/src/hooks/useTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as Contacts from "expo-contacts";
 import { View, StyleSheet } from "react-native";
 import {
@@ -13,13 +13,13 @@ import {
 } from "react-native-safe-area-context";
 
 export default function Chat() {
-  const colors = useTheme();
+  const { colors } = useTheme();
   const { number, id }: { number: string; id: string } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState<string>();
 
-  const fetchChats = () => {};
-  const sendMessage = () => {};
+  const fetchChats = () => { };
+  const sendMessage = () => { };
   useEffect(() => {
     fetchChats();
     (async () => {
@@ -29,17 +29,20 @@ export default function Chat() {
     })();
   }, []);
 
-  const dynamicStyles = StyleSheet.create({
+  // Theme-dependent styles (memoized by theme)
+  const themedStyles = useThemedStyles((colors) => ({
     container: {
       flex: 1,
       backgroundColor: colors.backgroundPrimary,
     },
-    messageBar: {
-      paddingBottom: insets.bottom,
-    },
-  });
+  }));
+
+  // Insets-dependent styles (memoized by insets)
+  const messageBarInsetStyle = useMemo(() => ({
+    paddingBottom: insets.bottom,
+  }), [insets.bottom]);
   return (
-    <SafeAreaView style={dynamicStyles.container}>
+    <SafeAreaView style={themedStyles.container}>
       <View style={styles.header}>
         <StyledButton onPress={() => router.back()} variant="link">
           <Ionicons
@@ -55,7 +58,7 @@ export default function Chat() {
       </View>
       <View
         style={StyleSheet.flatten([
-          dynamicStyles.messageBar,
+          messageBarInsetStyle,
           styles.messageBar,
         ])}
       >

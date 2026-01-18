@@ -6,7 +6,7 @@ import {
   ViewStyle,
   TextStyle,
 } from "react-native";
-import { useTheme } from "@/src/hooks/useTheme";
+import { useTheme, useThemedStyles } from "@/src/hooks/useTheme";
 
 interface StyledButtonProps extends TouchableOpacityProps {
   variant?: "default" | "link";
@@ -20,9 +20,9 @@ const StyledButton = ({
   children,
   ...restProps
 }: StyledButtonProps) => {
-  const {colors} = useTheme();
+  const { colors } = useTheme();
 
-  const styles = StyleSheet.create({
+  const styles = useThemedStyles((colors) => ({
     base: {
       paddingVertical: 4,
       paddingHorizontal: 4,
@@ -34,7 +34,7 @@ const StyledButton = ({
       backgroundColor: colors.accentPrimary,
     },
     pressedDefault: {
-      backgroundColor: colors.accentPrimaryDark ?? colors.accentPrimary, // fallback
+      backgroundColor: colors.accentPrimaryDark ?? colors.accentPrimary,
       opacity: 0.9,
       transform: [{ scale: 0.97 }],
     },
@@ -44,7 +44,7 @@ const StyledButton = ({
     pressedLink: {
       opacity: 0.6,
     },
-  });
+  }));
 
   return (
     <Pressable
@@ -57,7 +57,7 @@ const StyledButton = ({
       }}
       android_ripple={
         variant === "default"
-          ? { color: colors.accentPrimaryDark ?? "#00000020" }
+          ? { color: "#00000020" }  // Use string color; PlatformColor values don't work with android_ripple
           : undefined
       }
       {...restProps}

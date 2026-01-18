@@ -15,18 +15,28 @@ public class LibsignalDezireModule: Module {
             let u = [UInt8](uData)
             let M = [UInt8](MData)
 
-            guard u.count == 32, M.count == 32 else {
+            guard u.count == 32 else {
                 throw NSError(
                     domain: "LibsignalDezire", code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Inputs must be 32 bytes"])
+                    userInfo: [NSLocalizedDescriptionKey: "Key must be 32 bytes"])
             }
-            var output = vxeddsa_sign(u, M)
+            
+            let outputPtr = UnsafeMutablePointer<VXEdDSAOutput>.allocate(capacity: 1)
+            defer { outputPtr.deallocate() }
+            
+            let result = vxeddsa_sign_ffi(u, M, M.count, outputPtr)
+            
+            if result != 0 {
+                throw NSError(
+                    domain: "LibsignalDezire", code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "Signing failed"])
+            }
 
             // Access the C-tuples/arrays.
-            let signature = withUnsafePointer(to: &output.signature) {
+            let signature = withUnsafePointer(to: &outputPtr.pointee.signature) {
                 Data(bytes: $0, count: 96)
             }
-            let vrf_output = withUnsafePointer(to: &output.vrf) {
+            let vrf_output = withUnsafePointer(to: &outputPtr.pointee.vrf) {
                 Data(bytes: $0, count: 32)
             }
 
@@ -38,18 +48,18 @@ public class LibsignalDezireModule: Module {
         AsyncFunction("genPubKey") { (kData: Data) -> Data in
             let k = [UInt8](kData)
             var pubkey = [UInt8](repeating: 0, count: 32)
-            gen_pubkey(k, &pubkey)
+            gen_pubkey_ffi(k, &pubkey)
 
             return Data(pubkey)
         }
 
         AsyncFunction("genSecret") { () -> Data in
             var secret = [UInt8](repeating: 0, count: 32)
-            gen_secret(&secret)
+            gen_secret_ffi(&secret)
             return Data(secret)
         }
         AsyncFunction("genKeyPair") { () -> [String: Data] in
-            var keys = gen_keypair()
+            var keys = gen_keypair_ffi()
 
             // Access the C-tuples/arrays.
             let secretData = withUnsafePointer(to: &keys.secret) {
@@ -70,14 +80,14 @@ public class LibsignalDezireModule: Module {
             let M = [UInt8](MData)
             let signature = [UInt8](signatureData)
 
-            guard u.count == 32, M.count == 32, signature.count == 96 else {
+            guard u.count == 32, signature.count == 96 else {
                 throw NSError(
                     domain: "LibsignalDezire", code: 1,
                     userInfo: [NSLocalizedDescriptionKey: "Invalid input lengths"])
             }
 
             var v_out = [UInt8](repeating: 0, count: 32)
-            let isValid = vxeddsa_verify(u, M, signature, &v_out)
+            let isValid = vxeddsa_verify_ffi(u, M, M.count, signature, &v_out)
 
             if isValid {
                 return Data(v_out)
@@ -85,9 +95,6 @@ public class LibsignalDezireModule: Module {
                 return nil
             }
         }
-
-        // Enables the module to be used as a native view. Definition components that are accepted as part of the
-        // view definition: Prop, Events.
 
     }
 }

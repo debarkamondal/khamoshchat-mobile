@@ -45,13 +45,13 @@ function InnerLayout({ isRegistered }: { isRegistered: boolean }) {
             contentStyle: {
               backgroundColor: isLiquidGlassAvailable()
                 ? "transparent"
-                : colors.backgroundPrimary,
+                : colors.backgroundPrimary as string,
             },
             headerStyle: {
               backgroundColor:
                 Platform.OS === "ios"
                   ? "transparent"
-                  : colors.backgroundPrimary,
+                  : colors.backgroundPrimary as string,
             },
             headerBlurEffect: isLiquidGlassAvailable() ? undefined : "dark", // or based on your color scheme
           }}

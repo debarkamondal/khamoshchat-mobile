@@ -1,10 +1,16 @@
 import React, { createContext, useContext, useMemo } from "react";
-import { Platform, PlatformColor, useColorScheme } from "react-native";
-import {requiredColors} from "@/src/static/colors";
+import { Platform, PlatformColor, StyleSheet, useColorScheme, OpaqueColorValue } from "react-native";
+import { requiredColors } from "@/src/static/colors";
+
+// Derive color keys from the requiredColors object
+type ColorKeys = keyof typeof requiredColors;
+
+// Type for the computed colors object (maps color keys to color values)
+type ComputedColors = { [K in ColorKeys]: string | OpaqueColorValue };
 
 // Define types for the Theme Context
 interface ThemeContextType {
-  colors: { [key: string]: any };
+  colors: ComputedColors;
   scheme: "light" | "dark" | null;
 }
 
@@ -29,22 +35,46 @@ export function useTheme() {
   return context;
 }
 
-function computeColors(scheme: "light" | "dark" | null) {
+function computeColors(scheme: "light" | "dark" | null): ComputedColors {
   const platform = Platform.OS;
-  // Compute colors fresh each time
-  const colorObj: { [key: string]: any } = {};
-  for (let color in requiredColors) {
-    if (platform === "ios")
-      colorObj[color] = PlatformColor(requiredColors[color].ios);
-    else if (platform === "android")
+  const colorObj = {} as ComputedColors;
+
+  for (const color of Object.keys(requiredColors) as ColorKeys[]) {
+    const colorDef = requiredColors[color];
+    if (platform === "ios") {
+      colorObj[color] = PlatformColor(colorDef.ios);
+    } else if (platform === "android") {
       colorObj[color] = PlatformColor(
-        typeof requiredColors[color].android === "string"
-          ? requiredColors[color].android
-          : requiredColors[color].android[
-              scheme === "light" ? "light" : "dark"
-            ],
+        typeof colorDef.android === "string"
+          ? colorDef.android
+          : colorDef.android[scheme === "light" ? "light" : "dark"]
       );
-    else colorObj[color] = requiredColors[color].fallback[scheme ?? "light"];
+    } else {
+      colorObj[color] = colorDef.fallback[scheme ?? "light"];
+    }
   }
   return colorObj;
+}
+
+// Export the type for colors object
+export type ThemeColors = ComputedColors;
+
+/**
+ * Hook for creating memoized themed styles.
+ * Styles are only recomputed when the theme colors change.
+ *
+ * @example
+ * const styles = useThemedStyles((colors) => ({
+ *   container: { backgroundColor: colors.backgroundPrimary },
+ *   text: { color: colors.textPrimary },
+ * }));
+ */
+export function useThemedStyles<T extends StyleSheet.NamedStyles<T>>(
+  styleFactory: (colors: ThemeColors) => T
+): T {
+  const { colors } = useTheme();
+  return useMemo(
+    () => StyleSheet.create(styleFactory(colors)),
+    [colors, styleFactory]
+  );
 }

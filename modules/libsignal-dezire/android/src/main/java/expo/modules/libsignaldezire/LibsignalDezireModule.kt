@@ -18,15 +18,23 @@ class LibsignalDezireModule : Module() {
     // Defines a JavaScript function that always returns a Promise and whose native code
     // is by default dispatched on the different thread than the JavaScript runtime runs on.
 
-    AsyncFunction("genKeyPair") { genKeyPair() }
+    AsyncFunction("genKeyPair") { genKeyPair() ?: throw Exception("Failed to generate key pair") }
 
     AsyncFunction("genPubKey") { k: ByteArray -> genPubKey(k) }
 
     AsyncFunction("genSecret") { genSecret() }
 
-    AsyncFunction("vxeddsaSign") { k: ByteArray, m: ByteArray -> vxeddsaSign(k, m) }
+    AsyncFunction("vxeddsaSign") { k: ByteArray, m: ByteArray ->
+      if (k.size != 32) {
+        throw Exception("Key must be 32 bytes")
+      }
+      vxeddsaSign(k, m) ?: throw Exception("Signing failed")
+    }
 
     AsyncFunction("vxeddsaVerify") { u: ByteArray, m: ByteArray, signature: ByteArray ->
+      if (u.size != 32 || signature.size != 96) {
+        throw Exception("Invalid input lengths")
+      }
       vxeddsaVerify(u, m, signature)
     }
   }
@@ -36,9 +44,9 @@ class LibsignalDezireModule : Module() {
       System.loadLibrary("libsignal_dezire")
     }
 
-    @JvmStatic external fun genKeyPair(): Map<String, Any>
+    @JvmStatic external fun genKeyPair(): Map<String, Any>?
 
-    @JvmStatic external fun vxeddsaSign(k: ByteArray, m: ByteArray): Map<String, Any>
+    @JvmStatic external fun vxeddsaSign(k: ByteArray, m: ByteArray): Map<String, Any>?
 
     @JvmStatic
     external fun vxeddsaVerify(u: ByteArray, m: ByteArray, signature: ByteArray): ByteArray?

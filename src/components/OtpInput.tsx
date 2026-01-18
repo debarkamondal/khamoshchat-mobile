@@ -11,7 +11,7 @@ import {
   Platform,
   StyleProp,
 } from "react-native";
-import { useTheme } from "@/src/hooks/useTheme";
+import { useThemedStyles } from "@/src/hooks/useTheme";
 
 export interface OtpInputProps {
   length?: number;
@@ -47,7 +47,6 @@ export default function OtpInput({
     isControlled ? controlledValue || "" : "",
   );
   const inputs = useRef<(TextInput | null)[]>([]);
-  const {colors} = useTheme();
 
   useEffect(() => {
     if (isControlled) setValue(controlledValue || "");
@@ -106,7 +105,7 @@ export default function OtpInput({
       }
     }
   };
-  const dynamicStyles = StyleSheet.create({
+  const dynamicStyles = useThemedStyles((colors) => ({
     cell: {
       width: 44,
       height: 52,
@@ -118,7 +117,7 @@ export default function OtpInput({
       fontSize: 20,
       padding: 0,
     } as TextStyle,
-  });
+  }));
   return (
     <View style={[styles.container, containerStyle]}>
       {Array.from({ length }).map((_, i) => (

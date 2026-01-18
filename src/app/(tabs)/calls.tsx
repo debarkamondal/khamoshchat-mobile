@@ -1,20 +1,20 @@
 import StyledText from "@/src/components/StyledText";
-import { useTheme } from "@/src/hooks/useTheme";
-import { View, StyleSheet } from "react-native";
+import { useThemedStyles } from "@/src/hooks/useTheme";
+import { View } from "react-native";
 
 export default function Calls() {
-  const colors = useTheme();
-  const styles = StyleSheet.create({
+  const styles = useThemedStyles((colors) => ({
     container: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
       backgroundColor: colors.backgroundPrimary,
     },
-  });
+  }));
   return (
     <View style={styles.container}>
       <StyledText>Coming Soon !!!</StyledText>
     </View>
   );
 }
+

@@ -3,8 +3,7 @@
 # dependencies
 node_modules/
 
-#libsignal-dezire
-# libsignal-dezire
+libsignal-dezire
 
 #modules/libsignal-dezire
 modules/libsignal-dezire/android/build

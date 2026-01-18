@@ -3,15 +3,14 @@ import * as Crypto from "expo-crypto";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 import StyledButton from "@/src/components/StyledButton";
 import StyledText from "@/src/components/StyledText";
-import { useTheme } from "@/src/hooks/useTheme";
+import { useThemedStyles } from "@/src/hooks/useTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { View, StyleSheet, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function Index() {
-  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [keyPair, setKeyPair] = useState<KeyPair>({
     public: new Uint8Array(32),
@@ -45,27 +44,30 @@ export default function Index() {
     sign();
   }, []);
 
-  const styles = StyleSheet.create({
+  // Theme-dependent styles (memoized by theme)
+  const themedStyles = useThemedStyles((colors) => ({
     container: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
       backgroundColor: colors.backgroundPrimary,
     },
-    contactButton: {
-      position: "absolute",
-      bottom: Platform.OS === "ios" ? insets.bottom + 55 : insets.bottom + 120,
-      right: 10,
-      paddingHorizontal: 16,
-      paddingVertical: 16,
-      borderRadius: 50,
-    },
-  });
+  }));
+
+  // Insets-dependent styles (memoized by insets)
+  const contactButtonStyle = useMemo(() => ({
+    position: "absolute" as const,
+    bottom: Platform.OS === "ios" ? insets.bottom + 55 : insets.bottom + 120,
+    right: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 50,
+  }), [insets.bottom]);
   return (
-    <View style={styles.container}>
+    <View style={themedStyles.container}>
       <StyledText>Tab Home</StyledText>
       <StyledButton
-        style={styles.contactButton}
+        style={contactButtonStyle}
         onPress={() => router.push("/contacts")}
       >
         <StyledText>

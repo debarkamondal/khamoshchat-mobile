@@ -1,6 +1,8 @@
-import { Platform, StyleProp, StyleSheet, View } from "react-native";
+import { StyleProp, StyleSheet, View } from "react-native";
 import { ReactNode } from "react";
 import { ViewStyle } from "react-native/Libraries/StyleSheet/StyleSheetTypes";
+import { useThemedStyles } from "@/src/hooks/useTheme";
+
 export default function Card({
   children,
   styles,
@@ -8,18 +10,17 @@ export default function Card({
   styles?: StyleProp<ViewStyle>;
   children: ReactNode;
 }) {
+  const themedStyle = useThemedStyles((colors) => ({
+    default: {
+      marginVertical: 4,
+      padding: 4,
+      borderRadius: 8,
+      backgroundColor: colors.card,
+    },
+  }));
   return (
-    <View style={StyleSheet.flatten([fixedStyle.default, styles])}>
+    <View style={StyleSheet.flatten([themedStyle.default, styles])}>
       {children}
     </View>
   );
 }
-const fixedStyle = StyleSheet.create({
-  default: {
-    marginVertical: 4,
-    padding: 4,
-    borderRadius: 8,
-    backgroundColor:
-      Platform.OS === "ios" ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0)",
-  },
-});

@@ -1,14 +1,13 @@
 import { StyleSheet, Text, TextProps } from "react-native";
-import { useTheme } from "@/src/hooks/useTheme";
+import { useThemedStyles } from "@/src/hooks/useTheme";
 
 const StyledText = ({ style: styles, ...restProps }: TextProps) => {
-  const {colors} = useTheme();
-  const defaultStyles = StyleSheet.create({
+  const defaultStyles = useThemedStyles((colors) => ({
     textDefault: {
       color: colors.textPrimary,
       fontSize: 18,
     },
-  });
+  }));
   return (
     <Text
       style={StyleSheet.flatten([defaultStyles.textDefault, styles])}
