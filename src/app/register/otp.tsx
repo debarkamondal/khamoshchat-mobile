@@ -22,10 +22,11 @@ export default function otp() {
 
   const submit = async (otp: number) => {
     if (!preKey || !iKey) return;
-    const { signature, vrf } = await LibsignalDezireModule.vxeddsaSign(iKey, await LibsignalDezireModule.genPubKey(preKey));
+    const pubPreKey = await LibsignalDezireModule.genPubKey(preKey)
+    const { signature, vrf } = await LibsignalDezireModule.vxeddsaSign(iKey, await LibsignalDezireModule.encodePublicKey(pubPreKey));
     const b64Sign = btoa(String.fromCharCode(...signature));
-    const b64PreKey = btoa(String.fromCharCode(...await LibsignalDezireModule.genPubKey(preKey)));
-    const b64Otks = await genOtks();
+    const b64PreKey = btoa(String.fromCharCode(...pubPreKey));
+    // const b64Otks = await genOtks();
     const body = {
       phone: phone.countryCode + phone.number,
       sign: b64Sign,
