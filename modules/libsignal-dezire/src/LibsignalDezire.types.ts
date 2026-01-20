@@ -8,8 +8,14 @@ export type KeyPair = {
 }
 
 export type X3DHInitOutput = {
-  shared_secret: Uint8Array;
-  ephemeral_public: Uint8Array;
+  sharedSecret: Uint8Array;
+  ephemeralPublic: Uint8Array;
+  status: number;
+};
+
+export type X3DHResponderOutput = {
+  sharedSecret: Uint8Array;
+  status: number;
 };
 
 export type RatchetEncryptResult = {

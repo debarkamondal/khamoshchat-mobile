@@ -96,5 +96,133 @@ public class LibsignalDezireModule: Module {
             }
         }
 
+        // X3DH Initiator (Alice)
+        AsyncFunction("x3dhInitiator") { (
+            identityPrivate: Data,
+            bobIdentityPublic: Data,
+            bobSpkId: UInt32,
+            bobSpkPublic: Data,
+            bobSpkSignature: Data,
+            bobOpkId: UInt32,
+            bobOpkPublic: Data?,
+            hasOpk: Bool
+        ) -> [String: Any] in
+            guard identityPrivate.count == 32,
+                  bobIdentityPublic.count == 32,
+                  bobSpkPublic.count == 32,
+                  bobSpkSignature.count == 96 else {
+                throw NSError(
+                    domain: "LibsignalDezire", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Invalid input lengths"])
+            }
+
+            if hasOpk {
+                guard let opk = bobOpkPublic, opk.count == 32 else {
+                    throw NSError(
+                        domain: "LibsignalDezire", code: 1,
+                        userInfo: [NSLocalizedDescriptionKey: "One-time prekey must be 32 bytes when hasOpk is true"])
+                }
+            }
+
+            let outputPtr = UnsafeMutablePointer<X3DHInitOutput>.allocate(capacity: 1)
+            defer { outputPtr.deallocate() }
+
+            let identityPrivateBytes = [UInt8](identityPrivate)
+            let bobIdentityPublicBytes = [UInt8](bobIdentityPublic)
+            let bobSpkPublicBytes = [UInt8](bobSpkPublic)
+            let bobSpkSignatureBytes = [UInt8](bobSpkSignature)
+            let bobOpkPublicBytes: [UInt8]? = bobOpkPublic.map { [UInt8]($0) }
+
+            let status = x3dh_initiator_ffi(
+                identityPrivateBytes,
+                bobIdentityPublicBytes,
+                bobSpkId,
+                bobSpkPublicBytes,
+                bobSpkSignatureBytes,
+                bobOpkId,
+                bobOpkPublicBytes,
+                hasOpk,
+                outputPtr
+            )
+
+            let sharedSecret = withUnsafePointer(to: &outputPtr.pointee.shared_secret) {
+                Data(bytes: $0, count: 32)
+            }
+            let ephemeralPublic = withUnsafePointer(to: &outputPtr.pointee.ephemeral_public) {
+                Data(bytes: $0, count: 32)
+            }
+
+            return [
+                "sharedSecret": sharedSecret,
+                "ephemeralPublic": ephemeralPublic,
+                "status": status
+            ]
+        }
+
+        // X3DH Responder (Bob)
+        AsyncFunction("x3dhResponder") { (
+            identityPrivate: Data,
+            signedPrekeyPrivate: Data,
+            oneTimePrekeyPrivate: Data?,
+            hasOpk: Bool,
+            aliceIdentityPublic: Data,
+            aliceEphemeralPublic: Data
+        ) -> [String: Any] in
+            guard identityPrivate.count == 32,
+                  signedPrekeyPrivate.count == 32,
+                  aliceIdentityPublic.count == 32,
+                  aliceEphemeralPublic.count == 32 else {
+                throw NSError(
+                    domain: "LibsignalDezire", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Invalid input lengths"])
+            }
+
+            if hasOpk {
+                guard let opk = oneTimePrekeyPrivate, opk.count == 32 else {
+                    throw NSError(
+                        domain: "LibsignalDezire", code: 1,
+                        userInfo: [NSLocalizedDescriptionKey: "One-time prekey must be 32 bytes when hasOpk is true"])
+                }
+            }
+
+            var sharedSecretOut = [UInt8](repeating: 0, count: 32)
+
+            let identityPrivateBytes = [UInt8](identityPrivate)
+            let signedPrekeyPrivateBytes = [UInt8](signedPrekeyPrivate)
+            let oneTimePrekeyPrivateBytes: [UInt8]? = oneTimePrekeyPrivate.map { [UInt8]($0) }
+            let aliceIdentityPublicBytes = [UInt8](aliceIdentityPublic)
+            let aliceEphemeralPublicBytes = [UInt8](aliceEphemeralPublic)
+
+            let status = x3dh_responder_ffi(
+                identityPrivateBytes,
+                signedPrekeyPrivateBytes,
+                oneTimePrekeyPrivateBytes,
+                hasOpk,
+                aliceIdentityPublicBytes,
+                aliceEphemeralPublicBytes,
+                &sharedSecretOut
+            )
+
+            return [
+                "sharedSecret": Data(sharedSecretOut),
+                "status": status
+            ]
+        }
+
+        // Encode Public Key (prepends 0x05 for Curve25519)
+        AsyncFunction("encodePublicKey") { (keyData: Data) -> Data in
+            guard keyData.count == 32 else {
+                throw NSError(
+                    domain: "LibsignalDezire", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Key must be 32 bytes"])
+            }
+
+            let keyBytes = [UInt8](keyData)
+            var out = [UInt8](repeating: 0, count: 33)
+            encode_public_key_ffi(keyBytes, &out)
+
+            return Data(out)
+        }
+
     }
 }

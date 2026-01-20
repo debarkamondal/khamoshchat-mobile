@@ -12,7 +12,7 @@ const TARGET_TO_DESTINATION = {
 function build(target: string) {
   spawnSync(
     "cargo",
-    ["ndk", "--target", target, "--platform", "31", "build", "--release"],
+    ["ndk", "--target", target, "--platform", "31", "build", "--release", "--features=ffi"],
     {
       stdio: "inherit",
     }

@@ -37,12 +37,10 @@ export default function otp() {
       otp,
 
     }
-    console.log(body)
     const res = await fetch("https://identity.dkmondal.in/test/register/otp", {
       method: "POST",
       body: JSON.stringify(body),
     });
-    console.log(await res.text())
     if (res.status === 204) {
       markSesssionRegistered();
       router.replace("/");

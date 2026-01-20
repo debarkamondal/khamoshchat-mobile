@@ -103,6 +103,22 @@ const useSession = create(
         getItem,
         removeItem: deleteItemAsync,
       })),
+      merge: (persistedState, currentState) => {
+        const merged = {
+          ...currentState,
+          ...(persistedState as object),
+        } as Session;
+
+        if (merged.iKey && !(merged.iKey instanceof Uint8Array)) {
+          merged.iKey = new Uint8Array(Object.values(merged.iKey));
+        }
+
+        if (merged.preKey && !(merged.preKey instanceof Uint8Array)) {
+          merged.preKey = new Uint8Array(Object.values(merged.preKey));
+        }
+
+        return merged;
+      },
     },
   ),
 );

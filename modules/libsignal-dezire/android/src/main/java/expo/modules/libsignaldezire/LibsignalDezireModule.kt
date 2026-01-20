@@ -37,6 +37,8 @@ class LibsignalDezireModule : Module() {
       }
       vxeddsaVerify(u, m, signature)
     }
+
+    AsyncFunction("encodePublicKey") { k: ByteArray -> encodePublicKey(k) }
   }
 
   companion object {
@@ -46,13 +48,15 @@ class LibsignalDezireModule : Module() {
 
     @JvmStatic external fun genKeyPair(): Map<String, Any>?
 
+    @JvmStatic external fun genPubKey(k: ByteArray): ByteArray?
+
+    @JvmStatic external fun genSecret(): ByteArray?
+
     @JvmStatic external fun vxeddsaSign(k: ByteArray, m: ByteArray): Map<String, Any>?
 
     @JvmStatic
     external fun vxeddsaVerify(u: ByteArray, m: ByteArray, signature: ByteArray): ByteArray?
 
-    @JvmStatic external fun genPubKey(k: ByteArray): ByteArray?
-
-    @JvmStatic external fun genSecret(): ByteArray?
+    @JvmStatic external fun encodePublicKey(k: ByteArray): ByteArray?
   }
 }

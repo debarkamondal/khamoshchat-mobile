@@ -8,7 +8,7 @@ const TARGETS = {
 };
 
 function cargoBuild(target: string) {
-  spawnSync("cargo", ["build", "--release", "--target", target], {
+  spawnSync("cargo", ["build", "--features=ffi", "--release", "--target", target], {
     stdio: "inherit",
   });
 }

@@ -1,6 +1,6 @@
 import { NativeModule, requireNativeModule } from "expo";
 
-import { KeyPair, VXEdDSAOutput, X3DHInitOutput, RatchetEncryptResult } from "./LibsignalDezire.types";
+import { KeyPair, VXEdDSAOutput, X3DHInitOutput, X3DHResponderOutput, RatchetEncryptResult } from "./LibsignalDezire.types";
 
 declare class LibsignalDezireModule extends NativeModule {
   genKeyPair(): Promise<KeyPair>;
@@ -25,15 +25,20 @@ declare class LibsignalDezireModule extends NativeModule {
     bobSpkSignature: Uint8Array,
     bobOpkId: number,
     bobOpkPublic: Uint8Array | null,
-  ): Promise<X3DHInitOutput | null>;
+    hasOpk: boolean,
+  ): Promise<X3DHInitOutput>;
 
   x3dhResponder(
     identityPrivate: Uint8Array,
     signedPreKeyPrivate: Uint8Array,
     oneTimePreKeyPrivate: Uint8Array | null,
+    hasOpk: boolean,
     aliceIdentityPublic: Uint8Array,
     aliceEphemeralPublic: Uint8Array,
-  ): Promise<Uint8Array | null>;
+  ): Promise<X3DHResponderOutput>;
+
+  // Utils
+  encodePublicKey(key: Uint8Array): Promise<Uint8Array>;
 
   // Ratchet
   ratchetInitSender(

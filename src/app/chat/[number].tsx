@@ -6,20 +6,44 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import * as Contacts from "expo-contacts";
+import { Buffer } from "buffer";
 import { View, StyleSheet } from "react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import useSession from "@/src/store/session";
+import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 
 export default function Chat() {
   const { colors } = useTheme();
+  const session = useSession();
   const { number, id }: { number: string; id: string } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState<string>();
 
-  const fetchChats = () => { };
-  const sendMessage = () => { };
+  const fetchChats = () => [];
+  const sendMessage = async () => {
+    const sign = await LibsignalDezireModule.vxeddsaSign(session.preKey, new TextEncoder().encode(number))
+    const body = {
+      phone: session.phone.countryCode + session.phone.number,
+      signature: Buffer.from(sign.signature).toString('base64'),
+      vrf: Buffer.from(sign.vrf).toString('base64')
+
+
+    }
+    console.log(body)
+    if (fetchChats.length === 0) {
+      const res = await fetch(`https://identity.dkmondal.in/test/bundle/${number}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body)
+      })
+      console.log(await res.text())
+    }
+  };
   useEffect(() => {
     fetchChats();
     (async () => {

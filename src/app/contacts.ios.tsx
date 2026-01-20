@@ -38,12 +38,12 @@ export default function Contacts() {
         data={
           searchTerm
             ? contacts?.filter(
-                (contact) =>
-                  contact.number.startsWith(searchTerm) ||
-                  contact.firstName
-                    .toLowerCase()
-                    .startsWith(searchTerm.toLowerCase()),
-              )
+              (contact) =>
+                contact.number.startsWith(searchTerm) ||
+                contact.firstName
+                  .toLowerCase()
+                  .startsWith(searchTerm.toLowerCase()),
+            )
             : contacts
         }
         keyExtractor={(item) => item.id}
@@ -54,9 +54,10 @@ export default function Contacts() {
               <Ionicons name={"search"} size={24} />
             </StyledText>
             <Pressable
-              onPress={() =>
-                router.replace(`/chat/${item.number}?id=${item.id}`)
-              }
+              onPress={() => {
+                let sanitizedNumber = item.number.replace(/[^0-9+]/g, "");
+                router.replace(`/chat/${sanitizedNumber}?id=${item.id}`)
+              }}
               style={styles.cardContent}
             >
               {item && (
