@@ -23,25 +23,86 @@ export default function Chat() {
   const [name, setName] = useState<string>();
 
   const fetchChats = () => [];
+
+  // Helper function to serialize Bob's key bundle
+  const serializeBobBundle = (
+    identityKey: Uint8Array,
+    spkId: number,
+    spkPublic: Uint8Array,
+    signature: Uint8Array,
+    otkId: number,
+    otkPublic: Uint8Array | null,
+    hasOpk: boolean
+  ): Uint8Array => {
+    const size = hasOpk ? 200 : 168;
+    const buffer = new ArrayBuffer(size);
+    const view = new DataView(buffer);
+    const bytes = new Uint8Array(buffer);
+
+    bytes.set(identityKey, 0);           // 0-31: identityKey (32 bytes)
+    view.setUint32(32, spkId, true);     // 32-35: spkId (4 bytes, little-endian)
+    bytes.set(spkPublic, 36);            // 36-67: spkPublic (32 bytes)
+    bytes.set(signature, 68);            // 68-163: signature (96 bytes)
+    view.setUint32(164, otkId, true);    // 164-167: otkId (4 bytes, little-endian)
+    if (hasOpk && otkPublic) {
+      bytes.set(otkPublic, 168);         // 168-199: otkPublic (32 bytes)
+    }
+    return bytes;
+  };
+
+  type PreKeyBundle = {
+    identityKey: string;
+    signature: string;
+    signedPreKey: string;
+    otk: {
+      id: number;
+      key: string;
+    };
+  };
+
   const sendMessage = async () => {
     const sign = await LibsignalDezireModule.vxeddsaSign(session.preKey, new TextEncoder().encode(number))
     const body = {
       phone: session.phone.countryCode + session.phone.number,
       signature: Buffer.from(sign.signature).toString('base64'),
-      vrf: Buffer.from(sign.vrf).toString('base64')
+      vrf: Buffer.from(sign.vrf).toString('base64'),
+    };
+    console.log(body);
 
-
-    }
-    console.log(body)
-    if (fetchChats.length === 0) {
+    let preKeyBundle: PreKeyBundle | undefined;
+    if (fetchChats().length === 0) {
       const res = await fetch(`https://identity.dkmondal.in/test/bundle/${number}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(body)
-      })
-      console.log(await res.text())
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        preKeyBundle = await res.json();
+      } else {
+        console.log("Failed to fetch bundle:", await res.text());
+      }
+    }
+
+    if (preKeyBundle) {
+      const hasOpk = true;
+      const bobBundle = serializeBobBundle(
+        Buffer.from(preKeyBundle.identityKey, 'base64'),
+        1, // spkId - hardcoded for now, adjust as needed
+        Buffer.from(preKeyBundle.signedPreKey, 'base64'),
+        Buffer.from(preKeyBundle.signature, 'base64'),
+        preKeyBundle.otk.id,
+        Buffer.from(preKeyBundle.otk.key, 'base64'),
+        hasOpk
+      );
+
+      const result = await LibsignalDezireModule.x3dhInitiator(
+        session.iKey,
+        bobBundle,
+        hasOpk
+      );
+      console.log("x3dhInitiator result:", result);
     }
   };
   useEffect(() => {

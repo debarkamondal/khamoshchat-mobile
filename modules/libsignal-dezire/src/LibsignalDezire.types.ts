@@ -10,7 +10,6 @@ export type KeyPair = {
 export type X3DHInitOutput = {
   sharedSecret: Uint8Array;
   ephemeralPublic: Uint8Array;
-  status: number;
 };
 
 export type X3DHResponderOutput = {

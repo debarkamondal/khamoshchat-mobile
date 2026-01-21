@@ -97,32 +97,34 @@ public class LibsignalDezireModule: Module {
         }
 
         // X3DH Initiator (Alice)
+        // Bundle format: [identityKey:32][spkId:4][spkPublic:32][signature:96][otkId:4][otkPublic:32?]
+        // Total: 168 bytes (without OTK) or 200 bytes (with OTK)
         AsyncFunction("x3dhInitiator") { (
             identityPrivate: Data,
-            bobIdentityPublic: Data,
-            bobSpkId: UInt32,
-            bobSpkPublic: Data,
-            bobSpkSignature: Data,
-            bobOpkId: UInt32,
-            bobOpkPublic: Data?,
+            bobBundle: Data,
             hasOpk: Bool
-        ) -> [String: Any] in
-            guard identityPrivate.count == 32,
-                  bobIdentityPublic.count == 32,
-                  bobSpkPublic.count == 32,
-                  bobSpkSignature.count == 96 else {
+        ) -> [String: Data] in
+            // Validate bundle size
+            let expectedSize = hasOpk ? 200 : 168
+            guard bobBundle.count == expectedSize else {
                 throw NSError(
                     domain: "LibsignalDezire", code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Invalid input lengths"])
+                    userInfo: [NSLocalizedDescriptionKey: "Invalid bundle size. Expected \(expectedSize), got \(bobBundle.count)"])
             }
-
-            if hasOpk {
-                guard let opk = bobOpkPublic, opk.count == 32 else {
-                    throw NSError(
-                        domain: "LibsignalDezire", code: 1,
-                        userInfo: [NSLocalizedDescriptionKey: "One-time prekey must be 32 bytes when hasOpk is true"])
-                }
+            
+            guard identityPrivate.count == 32 else {
+                throw NSError(
+                    domain: "LibsignalDezire", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Identity private key must be 32 bytes"])
             }
+            
+            // Parse bundle
+            let bobIdentityPublic = bobBundle.subdata(in: 0..<32)
+            let bobSpkId = bobBundle.subdata(in: 32..<36).withUnsafeBytes { $0.load(as: UInt32.self) }
+            let bobSpkPublic = bobBundle.subdata(in: 36..<68)
+            let bobSpkSignature = bobBundle.subdata(in: 68..<164)
+            let bobOpkId = bobBundle.subdata(in: 164..<168).withUnsafeBytes { $0.load(as: UInt32.self) }
+            let bobOpkPublic: Data? = hasOpk ? bobBundle.subdata(in: 168..<200) : nil
 
             let outputPtr = UnsafeMutablePointer<X3DHInitOutput>.allocate(capacity: 1)
             defer { outputPtr.deallocate() }
@@ -133,7 +135,7 @@ public class LibsignalDezireModule: Module {
             let bobSpkSignatureBytes = [UInt8](bobSpkSignature)
             let bobOpkPublicBytes: [UInt8]? = bobOpkPublic.map { [UInt8]($0) }
 
-            let status = x3dh_initiator_ffi(
+            x3dh_initiator_ffi(
                 identityPrivateBytes,
                 bobIdentityPublicBytes,
                 bobSpkId,
@@ -151,11 +153,17 @@ public class LibsignalDezireModule: Module {
             let ephemeralPublic = withUnsafePointer(to: &outputPtr.pointee.ephemeral_public) {
                 Data(bytes: $0, count: 32)
             }
+            let status = outputPtr.pointee.status
+
+            if status != 0 {
+                throw NSError(
+                    domain: "LibsignalDezire", code: Int(status),
+                    userInfo: [NSLocalizedDescriptionKey: "X3DH initiator failed with status \(status)"])
+            }
 
             return [
                 "sharedSecret": sharedSecret,
-                "ephemeralPublic": ephemeralPublic,
-                "status": status
+                "ephemeralPublic": ephemeralPublic
             ]
         }
 

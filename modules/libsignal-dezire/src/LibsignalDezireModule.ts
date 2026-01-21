@@ -19,12 +19,7 @@ declare class LibsignalDezireModule extends NativeModule {
   // X3DH
   x3dhInitiator(
     identityPrivate: Uint8Array,
-    bobIdentityPublic: Uint8Array,
-    bobSpkId: number,
-    bobSpkPublic: Uint8Array,
-    bobSpkSignature: Uint8Array,
-    bobOpkId: number,
-    bobOpkPublic: Uint8Array | null,
+    bobBundle: Uint8Array,
     hasOpk: boolean,
   ): Promise<X3DHInitOutput>;
 
