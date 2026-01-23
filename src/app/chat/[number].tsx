@@ -14,6 +14,7 @@ import {
 } from "react-native-safe-area-context";
 import useSession from "@/src/store/session";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
+import useMqtt from "@/src/hooks/connectMqttServer";
 
 export default function Chat() {
   const { colors } = useTheme();
@@ -21,6 +22,7 @@ export default function Chat() {
   const { number, id }: { number: string; id: string } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState<string>();
+  const client = useMqtt(session.phone.countryCode + session.phone.number);
 
   const fetchChats = () => [];
 
@@ -30,8 +32,8 @@ export default function Chat() {
     spkId: number,
     spkPublic: Uint8Array,
     signature: Uint8Array,
-    otkId: number,
-    otkPublic: Uint8Array | null,
+    opkId: number,
+    opkPublic: Uint8Array | null,
     hasOpk: boolean
   ): Uint8Array => {
     const size = hasOpk ? 200 : 168;
@@ -43,9 +45,9 @@ export default function Chat() {
     view.setUint32(32, spkId, true);     // 32-35: spkId (4 bytes, little-endian)
     bytes.set(spkPublic, 36);            // 36-67: spkPublic (32 bytes)
     bytes.set(signature, 68);            // 68-163: signature (96 bytes)
-    view.setUint32(164, otkId, true);    // 164-167: otkId (4 bytes, little-endian)
-    if (hasOpk && otkPublic) {
-      bytes.set(otkPublic, 168);         // 168-199: otkPublic (32 bytes)
+    view.setUint32(164, opkId, true);    // 164-167: opkId (4 bytes, little-endian)
+    if (hasOpk && opkPublic) {
+      bytes.set(opkPublic, 168);         // 168-199: opkPublic (32 bytes)
     }
     return bytes;
   };
@@ -54,7 +56,7 @@ export default function Chat() {
     identityKey: string;
     signature: string;
     signedPreKey: string;
-    otk: {
+    opk: {
       id: number;
       key: string;
     };
@@ -67,7 +69,6 @@ export default function Chat() {
       signature: Buffer.from(sign.signature).toString('base64'),
       vrf: Buffer.from(sign.vrf).toString('base64'),
     };
-    console.log(body);
 
     let preKeyBundle: PreKeyBundle | undefined;
     if (fetchChats().length === 0) {
@@ -92,8 +93,8 @@ export default function Chat() {
         1, // spkId - hardcoded for now, adjust as needed
         Buffer.from(preKeyBundle.signedPreKey, 'base64'),
         Buffer.from(preKeyBundle.signature, 'base64'),
-        preKeyBundle.otk.id,
-        Buffer.from(preKeyBundle.otk.key, 'base64'),
+        preKeyBundle.opk.id,
+        Buffer.from(preKeyBundle.opk.key, 'base64'),
         hasOpk
       );
 
@@ -102,9 +103,16 @@ export default function Chat() {
         bobBundle,
         hasOpk
       );
-      console.log("x3dhInitiator result:", result);
+      if (!client) return;
+      client.publish(`/khamoshchat/${encodeURIComponent(number)}/${encodeURIComponent(session.phone.countryCode + session.phone.number)}`, JSON.stringify(result));
     }
   };
+  useEffect(() => {
+    if (!client) return;
+    client.on("message", (topic, message) => {
+      console.log(topic, JSON.parse(message.toString()));
+    });
+  }, [client])
   useEffect(() => {
     fetchChats();
     (async () => {

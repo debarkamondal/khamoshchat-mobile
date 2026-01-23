@@ -97,8 +97,8 @@ public class LibsignalDezireModule: Module {
         }
 
         // X3DH Initiator (Alice)
-        // Bundle format: [identityKey:32][spkId:4][spkPublic:32][signature:96][otkId:4][otkPublic:32?]
-        // Total: 168 bytes (without OTK) or 200 bytes (with OTK)
+        // Bundle format: [identityKey:32][spkId:4][spkPublic:32][signature:96][opkId:4][opkPublic:32?]
+        // Total: 168 bytes (without OPK) or 200 bytes (with OPK)
         AsyncFunction("x3dhInitiator") { (
             identityPrivate: Data,
             bobBundle: Data,
@@ -119,33 +119,47 @@ public class LibsignalDezireModule: Module {
             }
             
             // Parse bundle
-            let bobIdentityPublic = bobBundle.subdata(in: 0..<32)
+            let bobIdentityPublic = [UInt8](bobBundle.subdata(in: 0..<32))
             let bobSpkId = bobBundle.subdata(in: 32..<36).withUnsafeBytes { $0.load(as: UInt32.self) }
-            let bobSpkPublic = bobBundle.subdata(in: 36..<68)
-            let bobSpkSignature = bobBundle.subdata(in: 68..<164)
+            let bobSpkPublic = [UInt8](bobBundle.subdata(in: 36..<68))
+            let bobSpkSignature = [UInt8](bobBundle.subdata(in: 68..<164))
             let bobOpkId = bobBundle.subdata(in: 164..<168).withUnsafeBytes { $0.load(as: UInt32.self) }
-            let bobOpkPublic: Data? = hasOpk ? bobBundle.subdata(in: 168..<200) : nil
+            let bobOpkPublic: [UInt8] = hasOpk ? [UInt8](bobBundle.subdata(in: 168..<200)) : [UInt8](repeating: 0, count: 32)
+            let identityPrivateBytes = [UInt8](identityPrivate)
 
             let outputPtr = UnsafeMutablePointer<X3DHInitOutput>.allocate(capacity: 1)
             defer { outputPtr.deallocate() }
 
-            let identityPrivateBytes = [UInt8](identityPrivate)
-            let bobIdentityPublicBytes = [UInt8](bobIdentityPublic)
-            let bobSpkPublicBytes = [UInt8](bobSpkPublic)
-            let bobSpkSignatureBytes = [UInt8](bobSpkSignature)
-            let bobOpkPublicBytes: [UInt8]? = bobOpkPublic.map { [UInt8]($0) }
+            // Build and call FFI using withUnsafeBytes to avoid tuple conversions
+            var bundleInput = X3DHBundleInput()
+            withUnsafeMutableBytes(of: &bundleInput.identity_public) { ptr in
+                _ = bobIdentityPublic.withUnsafeBytes { src in
+                    memcpy(ptr.baseAddress!, src.baseAddress!, 32)
+                }
+            }
+            bundleInput.spk_id = bobSpkId
+            withUnsafeMutableBytes(of: &bundleInput.spk_public) { ptr in
+                _ = bobSpkPublic.withUnsafeBytes { src in
+                    memcpy(ptr.baseAddress!, src.baseAddress!, 32)
+                }
+            }
+            withUnsafeMutableBytes(of: &bundleInput.spk_signature) { ptr in
+                _ = bobSpkSignature.withUnsafeBytes { src in
+                    memcpy(ptr.baseAddress!, src.baseAddress!, 96)
+                }
+            }
+            bundleInput.opk_id = bobOpkId
+            withUnsafeMutableBytes(of: &bundleInput.opk_public) { ptr in
+                _ = bobOpkPublic.withUnsafeBytes { src in
+                    memcpy(ptr.baseAddress!, src.baseAddress!, 32)
+                }
+            }
+            bundleInput.has_opk = hasOpk
 
-            x3dh_initiator_ffi(
-                identityPrivateBytes,
-                bobIdentityPublicBytes,
-                bobSpkId,
-                bobSpkPublicBytes,
-                bobSpkSignatureBytes,
-                bobOpkId,
-                bobOpkPublicBytes,
-                hasOpk,
-                outputPtr
-            )
+            identityPrivateBytes.withUnsafeBytes { idPrivPtr in
+                let idPriv = idPrivPtr.baseAddress!.assumingMemoryBound(to: UInt8.self)
+                x3dh_initiator_ffi(idPriv, &bundleInput, outputPtr)
+            }
 
             let sharedSecret = withUnsafePointer(to: &outputPtr.pointee.shared_secret) {
                 Data(bytes: $0, count: 32)
@@ -172,10 +186,9 @@ public class LibsignalDezireModule: Module {
             identityPrivate: Data,
             signedPrekeyPrivate: Data,
             oneTimePrekeyPrivate: Data?,
-            hasOpk: Bool,
             aliceIdentityPublic: Data,
             aliceEphemeralPublic: Data
-        ) -> [String: Any] in
+        ) -> [String: Data] in
             guard identityPrivate.count == 32,
                   signedPrekeyPrivate.count == 32,
                   aliceIdentityPublic.count == 32,
@@ -185,35 +198,73 @@ public class LibsignalDezireModule: Module {
                     userInfo: [NSLocalizedDescriptionKey: "Invalid input lengths"])
             }
 
+            let hasOpk = oneTimePrekeyPrivate != nil && oneTimePrekeyPrivate!.count == 32
+
             if hasOpk {
                 guard let opk = oneTimePrekeyPrivate, opk.count == 32 else {
                     throw NSError(
                         domain: "LibsignalDezire", code: 1,
-                        userInfo: [NSLocalizedDescriptionKey: "One-time prekey must be 32 bytes when hasOpk is true"])
+                        userInfo: [NSLocalizedDescriptionKey: "One-time prekey must be 32 bytes when provided"])
                 }
             }
 
-            var sharedSecretOut = [UInt8](repeating: 0, count: 32)
-
+            // Convert to byte arrays
             let identityPrivateBytes = [UInt8](identityPrivate)
-            let signedPrekeyPrivateBytes = [UInt8](signedPrekeyPrivate)
-            let oneTimePrekeyPrivateBytes: [UInt8]? = oneTimePrekeyPrivate.map { [UInt8]($0) }
-            let aliceIdentityPublicBytes = [UInt8](aliceIdentityPublic)
-            let aliceEphemeralPublicBytes = [UInt8](aliceEphemeralPublic)
+            let spkPrivateBytes = [UInt8](signedPrekeyPrivate)
+            let opkPrivateBytes: [UInt8] = oneTimePrekeyPrivate != nil ? [UInt8](oneTimePrekeyPrivate!) : [UInt8](repeating: 0, count: 32)
+            let aliceIdPubBytes = [UInt8](aliceIdentityPublic)
+            let aliceEkPubBytes = [UInt8](aliceEphemeralPublic)
 
-            let status = x3dh_responder_ffi(
-                identityPrivateBytes,
-                signedPrekeyPrivateBytes,
-                oneTimePrekeyPrivateBytes,
-                hasOpk,
-                aliceIdentityPublicBytes,
-                aliceEphemeralPublicBytes,
-                &sharedSecretOut
-            )
+            let outputPtr = UnsafeMutablePointer<X3DHResponderOutput>.allocate(capacity: 1)
+            defer { outputPtr.deallocate() }
+
+            // Build responder input using memcpy
+            var responderInput = X3DHResponderInput()
+            withUnsafeMutableBytes(of: &responderInput.identity_private) { ptr in
+                _ = identityPrivateBytes.withUnsafeBytes { src in
+                    memcpy(ptr.baseAddress!, src.baseAddress!, 32)
+                }
+            }
+            withUnsafeMutableBytes(of: &responderInput.spk_private) { ptr in
+                _ = spkPrivateBytes.withUnsafeBytes { src in
+                    memcpy(ptr.baseAddress!, src.baseAddress!, 32)
+                }
+            }
+            withUnsafeMutableBytes(of: &responderInput.opk_private) { ptr in
+                _ = opkPrivateBytes.withUnsafeBytes { src in
+                    memcpy(ptr.baseAddress!, src.baseAddress!, 32)
+                }
+            }
+            responderInput.has_opk = hasOpk
+
+            // Build alice keys using memcpy
+            var aliceKeys = X3DHAliceKeys()
+            withUnsafeMutableBytes(of: &aliceKeys.identity_public) { ptr in
+                _ = aliceIdPubBytes.withUnsafeBytes { src in
+                    memcpy(ptr.baseAddress!, src.baseAddress!, 32)
+                }
+            }
+            withUnsafeMutableBytes(of: &aliceKeys.ephemeral_public) { ptr in
+                _ = aliceEkPubBytes.withUnsafeBytes { src in
+                    memcpy(ptr.baseAddress!, src.baseAddress!, 32)
+                }
+            }
+
+            x3dh_responder_ffi(&responderInput, &aliceKeys, outputPtr)
+
+            let sharedSecret = withUnsafePointer(to: &outputPtr.pointee.shared_secret) {
+                Data(bytes: $0, count: 32)
+            }
+            let status = outputPtr.pointee.status
+
+            if status != 0 {
+                throw NSError(
+                    domain: "LibsignalDezire", code: Int(status),
+                    userInfo: [NSLocalizedDescriptionKey: "X3DH responder failed with status \(status)"])
+            }
 
             return [
-                "sharedSecret": Data(sharedSecretOut),
-                "status": status
+                "sharedSecret": sharedSecret
             ]
         }
 

@@ -27,7 +27,6 @@ declare class LibsignalDezireModule extends NativeModule {
     identityPrivate: Uint8Array,
     signedPreKeyPrivate: Uint8Array,
     oneTimePreKeyPrivate: Uint8Array | null,
-    hasOpk: boolean,
     aliceIdentityPublic: Uint8Array,
     aliceEphemeralPublic: Uint8Array,
   ): Promise<X3DHResponderOutput>;

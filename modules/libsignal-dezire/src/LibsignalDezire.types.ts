@@ -14,7 +14,6 @@ export type X3DHInitOutput = {
 
 export type X3DHResponderOutput = {
   sharedSecret: Uint8Array;
-  status: number;
 };
 
 export type RatchetEncryptResult = {

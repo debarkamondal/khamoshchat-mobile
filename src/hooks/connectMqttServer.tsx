@@ -1,37 +1,58 @@
-import mqtt from "mqtt";
-import { useMemo, useState } from "react";
+import mqtt, { MqttClient } from "mqtt";
+import { useEffect, useState } from "react";
 import { Alert } from "react-native";
 
-const connectMqttServer = () => {
-  const [isConnected, setIsConnected] = useState(false);
-  let client = useMemo(() => {
-    return mqtt.connect("ws://broker.emqx.io/mqtt", {
-      // let client = mqtt.connect("mqtt://test.mosquitto.org", {
-      port: 8083,
-      protocol: "ws",
-      protocolVersion: 5,
-      connectTimeout: 5000,
-    });
-  }, []);
-  client.on("connect", () => {
-    setIsConnected(true);
-    client.subscribe("/deztest/#", (err) => {
-      if (err) {
-        Alert.alert(
-          "Error",
-          "Couldn't connect to the server. Please try again if the issue persists please contact support.",
-          [
-            {
-              text: "OK",
-              style: "cancel",
-            },
-          ],
-        );
+const useMqtt = (topic: string) => {
+  const [client, setClient] = useState<MqttClient | undefined>();
+
+  useEffect(() => {
+    let mqttClient: MqttClient;
+
+    try {
+      // Using wss and port 8084 as per previous file content
+      mqttClient = mqtt.connect("wss://broker.emqx.io/mqtt", {
+        port: 8084,
+        protocol: "wss",
+        protocolVersion: 5,
+        connectTimeout: 5000,
+        clientId: `khamosh_chat_${Math.random().toString(16).slice(2, 8)}`, // Unique client ID
+        clean: true, // Clean session
+      });
+
+      mqttClient.on("connect", () => {
+        console.log(`Connected to MQTT broker for topic: ${topic}`);
+        const topicPath = `/khamoshchat/${encodeURIComponent(topic)}/#`;
+
+        mqttClient.subscribe(topicPath, (err) => {
+          if (err) {
+            console.error("Subscription error:", err);
+            Alert.alert(
+              "Error",
+              "Couldn't connect to the server. Please check your internet connection.",
+              [{ text: "OK", style: 'cancel' }]
+            );
+          }
+        });
+      });
+
+      mqttClient.on("error", (err) => {
+        console.error("MQTT Error:", err);
+      });
+
+      setClient(mqttClient);
+    } catch (error) {
+      console.error("MQTT Connection Error:", error);
+    }
+
+    return () => {
+      if (mqttClient) {
+        // console.log("Disconnecting MQTT client");
+        mqttClient.end();
       }
-    });
-  });
-  client.on("error", (err) => console.log(err));
-  return { isConnected, client };
+    };
+  }, [topic]);
+
+  return client;
 };
 
-export default connectMqttServer;
+export default useMqtt;

@@ -54,7 +54,7 @@ const useSession = create(
           {
             return {
               ...state,
-              otks: [],
+              opks: [],
               isRegistered: false,
               phone: { countryCode: "", number: 0 },
               iKey: new Uint8Array(),
@@ -64,7 +64,7 @@ const useSession = create(
         });
       },
       initSession: async (phone) => {
-        await deleteItemAsync("otks");
+        await deleteItemAsync("opks");
         const iKey = await LibsignalDezireModule.genSecret()
         const preKey = await LibsignalDezireModule.genSecret();
         if (!iKey && !preKey) {

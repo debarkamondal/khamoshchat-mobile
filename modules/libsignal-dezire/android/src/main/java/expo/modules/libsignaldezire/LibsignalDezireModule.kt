@@ -43,7 +43,7 @@ class LibsignalDezireModule : Module() {
     AsyncFunction("encodePublicKey") { k: ByteArray -> encodePublicKey(k) }
 
     // X3DH Initiator with bundled arguments
-    // Bundle format: [identityKey:32][spkId:4][spkPublic:32][signature:96][otkId:4][otkPublic:32?]
+    // Bundle format: [identityKey:32][spkId:4][spkPublic:32][signature:96][opkId:4][opkPublic:32?]
     AsyncFunction("x3dhInitiator") {
             identityPrivate: ByteArray,
             bobBundle: ByteArray,
@@ -93,6 +93,37 @@ class LibsignalDezireModule : Module() {
       )
               ?: throw Exception("x3dhInitiator failed")
     }
+
+    // X3DH Responder (Bob)
+    AsyncFunction("x3dhResponder") {
+            identityPrivate: ByteArray,
+            signedPrekeyPrivate: ByteArray,
+            oneTimePrekeyPrivate: ByteArray?,
+            aliceIdentityPublic: ByteArray,
+            aliceEphemeralPublic: ByteArray ->
+      if (identityPrivate.size != 32 ||
+                      signedPrekeyPrivate.size != 32 ||
+                      aliceIdentityPublic.size != 32 ||
+                      aliceEphemeralPublic.size != 32
+      ) {
+        throw Exception("Invalid input lengths")
+      }
+      if (oneTimePrekeyPrivate != null && oneTimePrekeyPrivate.size != 32) {
+        throw Exception("One-time prekey must be 32 bytes when provided")
+      }
+
+      val sharedSecret =
+              x3dhResponder(
+                      identityPrivate,
+                      signedPrekeyPrivate,
+                      oneTimePrekeyPrivate,
+                      aliceIdentityPublic,
+                      aliceEphemeralPublic
+              )
+                      ?: throw Exception("x3dhResponder failed")
+
+      mapOf("sharedSecret" to sharedSecret)
+    }
   }
 
   companion object {
@@ -123,5 +154,14 @@ class LibsignalDezireModule : Module() {
             bobOpkId: Int,
             bobOpkPublic: ByteArray?
     ): Map<String, Any>?
+
+    @JvmStatic
+    external fun x3dhResponder(
+            identityPrivate: ByteArray,
+            signedPrekeyPrivate: ByteArray,
+            oneTimePrekeyPrivate: ByteArray?,
+            aliceIdentityPublic: ByteArray,
+            aliceEphemeralPublic: ByteArray
+    ): ByteArray?
   }
 }

@@ -5,7 +5,7 @@ import useSession from "@/src/store/session";
 import StyledButton from "@/src/components/StyledButton";
 import OtpInput from "@/src/components/OtpInput";
 import { StyleSheet } from "react-native";
-import { genOtks } from "@/src/utils/otks";
+import { genOpks } from "@/src/utils/opks";
 import { router } from "expo-router";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 
@@ -26,14 +26,14 @@ export default function otp() {
     const { signature, vrf } = await LibsignalDezireModule.vxeddsaSign(iKey, await LibsignalDezireModule.encodePublicKey(pubPreKey));
     const b64Sign = btoa(String.fromCharCode(...signature));
     const b64PreKey = btoa(String.fromCharCode(...pubPreKey));
-    const b64Otks = await genOtks();
+    const b64Opks = await genOpks();
     const body = {
       phone: phone.countryCode + phone.number,
       sign: b64Sign,
       signedPreKey: b64PreKey,
       // iKey: btoa(String.fromCharCode(...await LibsignalDezireModule.genPubKey(iKey))),
       vrf: btoa(String.fromCharCode(...vrf)),
-      otks: b64Otks,
+      opks: b64Opks,
       otp,
 
     }
