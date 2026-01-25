@@ -282,6 +282,139 @@ public class LibsignalDezireModule: Module {
 
             return Data(out)
         }
+        
+        // ============================================================================
+        // Ratchet Logic (In-Memory Only)
+        // ============================================================================
+        
+        // Registry to hold opaque pointers to RatchetState
+        var ratchetSessions = [String: OpaquePointer]()
+        
+        AsyncFunction("ratchetInitSender") { (sharedSecret: Data, receiverPublicKey: Data) -> String in
+            guard sharedSecret.count == 32, receiverPublicKey.count == 32 else {
+                 throw NSError(
+                    domain: "LibsignalDezire", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Keys must be 32 bytes"])
+            }
+            
+            let sk = [UInt8](sharedSecret)
+            let bobPublic = [UInt8](receiverPublicKey)
+            
+            guard let statePtr = ratchet_init_sender_ffi(sk, bobPublic) else {
+                 throw NSError(
+                    domain: "LibsignalDezire", code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to initialize sender ratchet"])
+            }
+            
+            let uuid = UUID().uuidString
+            ratchetSessions[uuid] = statePtr
+            return uuid
+        }
+        
+        AsyncFunction("ratchetInitReceiver") { (sharedSecret: Data, receiverPrivateKey: Data, receiverPublicKey: Data) -> String in
+            guard sharedSecret.count == 32, receiverPrivateKey.count == 32, receiverPublicKey.count == 32 else {
+                 throw NSError(
+                    domain: "LibsignalDezire", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Keys must be 32 bytes"])
+            }
+            
+            let sk = [UInt8](sharedSecret)
+            let bobPrivate = [UInt8](receiverPrivateKey)
+            let bobPublic = [UInt8](receiverPublicKey)
+
+            guard let statePtr = ratchet_init_receiver_ffi(sk, bobPrivate, bobPublic) else {
+                 throw NSError(
+                    domain: "LibsignalDezire", code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to initialize receiver ratchet"])
+            }
+            
+            let uuid = UUID().uuidString
+            ratchetSessions[uuid] = statePtr
+            return uuid
+        }
+        
+        AsyncFunction("ratchetEncrypt") { (uuid: String, plaintext: Data, ad: Data?) -> [String: Data] in
+            guard let statePtr = ratchetSessions[uuid] else {
+                 throw NSError(
+                    domain: "LibsignalDezire", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Session not found"])
+            }
+            
+            let ptBytes = [UInt8](plaintext)
+            let adBytes = ad != nil ? [UInt8](ad!) : [UInt8]()
+            
+            let outputPtr = UnsafeMutablePointer<RatchetEncryptResult>.allocate(capacity: 1)
+            defer { outputPtr.deallocate() }
+            
+            let status = ratchet_encrypt_ffi(statePtr, ptBytes, ptBytes.count, adBytes, adBytes.count, outputPtr)
+            
+            if status != 0 {
+                 throw NSError(
+                    domain: "LibsignalDezire", code: Int(status),
+                    userInfo: [NSLocalizedDescriptionKey: "Ratchet encrypt failed with status \(status)"])
+            }
+            
+            let header = withUnsafePointer(to: &outputPtr.pointee.header) { ptr -> Data in
+                // header is uint8_t*, need to read length
+                let len = outputPtr.pointee.header_len
+                return Data(bytes: outputPtr.pointee.header, count: len)
+            }
+            
+            let ciphertext = withUnsafePointer(to: &outputPtr.pointee.ciphertext) { ptr -> Data in
+                let len = outputPtr.pointee.ciphertext_len
+                return Data(bytes: outputPtr.pointee.ciphertext, count: len)
+            }
+            
+            // Important: Free the buffers allocated by Rust
+            ratchet_free_result_buffers(outputPtr.pointee.header, outputPtr.pointee.header_len, outputPtr.pointee.ciphertext, outputPtr.pointee.ciphertext_len)
+            
+            return [
+                "header": header,
+                "ciphertext": ciphertext
+            ]
+        }
+        
+        AsyncFunction("ratchetDecrypt") { (uuid: String, header: Data, ciphertext: Data, ad: Data?) -> Data in
+            guard let statePtr = ratchetSessions[uuid] else {
+                 throw NSError(
+                    domain: "LibsignalDezire", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Session not found"])
+            }
+            
+            let headerBytes = [UInt8](header)
+            let ctBytes = [UInt8](ciphertext)
+            let adBytes = ad != nil ? [UInt8](ad!) : [UInt8]()
+            
+            let outputPtr = UnsafeMutablePointer<RatchetDecryptResult>.allocate(capacity: 1)
+            defer { outputPtr.deallocate() }
+            
+            let status = ratchet_decrypt_ffi(statePtr, headerBytes, headerBytes.count, ctBytes, ctBytes.count, adBytes, adBytes.count, outputPtr)
+            
+            if status != 0 {
+                 throw NSError(
+                    domain: "LibsignalDezire", code: Int(status),
+                    userInfo: [NSLocalizedDescriptionKey: "Ratchet decrypt failed with status \(status)"])
+            }
+            
+            let plaintext = withUnsafePointer(to: &outputPtr.pointee.plaintext) { ptr -> Data in
+                let len = outputPtr.pointee.plaintext_len
+                return Data(bytes: outputPtr.pointee.plaintext, count: len)
+            }
+            
+            // Free the buffer allocated by Rust. The decrypt result only has one buffer to free.
+            // But wait, the API exposes `ratchet_free_byte_buffer`.
+            ratchet_free_byte_buffer(outputPtr.pointee.plaintext, outputPtr.pointee.plaintext_len)
+            
+            return plaintext
+        }
+        
+        AsyncFunction("ratchetFree") { (uuid: String) in
+            guard let statePtr = ratchetSessions[uuid] else {
+                return // Already freed or not found
+            }
+            ratchet_free_ffi(statePtr)
+            ratchetSessions.removeValue(forKey: uuid)
+        }
 
     }
 }

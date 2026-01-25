@@ -6,6 +6,8 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 class LibsignalDezireModule : Module() {
+  // Registry to hold raw pointers (Long) to RatchetState
+  private val ratchetSessions = mutableMapOf<String, Long>()
   // Each module class must implement the definition function. The definition consists of components
   // that describes the module's functionality and behavior.
   // See https://docs.expo.dev/modules/module-api for more details about available components.
@@ -124,6 +126,66 @@ class LibsignalDezireModule : Module() {
 
       mapOf("sharedSecret" to sharedSecret)
     }
+
+    // ============================================================================
+    // Ratchet Logic (In-Memory Only)
+    // ============================================================================
+
+    AsyncFunction("ratchetInitSender") { sharedSecret: ByteArray, receiverPublicKey: ByteArray ->
+      if (sharedSecret.size != 32 || receiverPublicKey.size != 32) {
+        throw Exception("Keys must be 32 bytes")
+      }
+      val statePtr = ratchetInitSender(sharedSecret, receiverPublicKey)
+      val uuid = java.util.UUID.randomUUID().toString()
+      ratchetSessions[uuid] = statePtr
+      uuid
+    }
+
+    AsyncFunction("ratchetInitReceiver") {
+            sharedSecret: ByteArray,
+            receiverPrivateKey: ByteArray,
+            receiverPublicKey: ByteArray ->
+      if (sharedSecret.size != 32 || receiverPrivateKey.size != 32 || receiverPublicKey.size != 32
+      ) {
+        throw Exception("Keys must be 32 bytes")
+      }
+      val statePtr = ratchetInitReceiver(sharedSecret, receiverPrivateKey, receiverPublicKey)
+      val uuid = java.util.UUID.randomUUID().toString()
+      ratchetSessions[uuid] = statePtr
+      uuid
+    }
+
+    AsyncFunction("ratchetEncrypt") { uuid: String, plaintext: ByteArray, ad: ByteArray? ->
+      val statePtr = ratchetSessions[uuid] ?: throw Exception("Session not found")
+      val adBytes = ad ?: ByteArray(0)
+
+      val result =
+              ratchetEncrypt(statePtr, plaintext, adBytes)
+                      ?: throw Exception("Ratchet encrypt failed")
+      result
+    }
+
+    AsyncFunction("ratchetDecrypt") {
+            uuid: String,
+            header: ByteArray,
+            ciphertext: ByteArray,
+            ad: ByteArray? ->
+      val statePtr = ratchetSessions[uuid] ?: throw Exception("Session not found")
+      val adBytes = ad ?: ByteArray(0)
+
+      val result =
+              ratchetDecrypt(statePtr, header, ciphertext, adBytes)
+                      ?: throw Exception("Ratchet decrypt failed")
+      result
+    }
+
+    AsyncFunction("ratchetFree") { uuid: String ->
+      val statePtr = ratchetSessions[uuid]
+      if (statePtr != null) {
+        ratchetFree(statePtr)
+        ratchetSessions.remove(uuid)
+      }
+    }
   }
 
   companion object {
@@ -163,5 +225,32 @@ class LibsignalDezireModule : Module() {
             aliceIdentityPublic: ByteArray,
             aliceEphemeralPublic: ByteArray
     ): ByteArray?
+
+    // Ratchet JNI Declarations
+    @JvmStatic external fun ratchetInitSender(sk: ByteArray, receiverData: ByteArray): Long
+
+    @JvmStatic
+    external fun ratchetInitReceiver(
+            sk: ByteArray,
+            receiverDhPrivate: ByteArray,
+            receiverDhPublic: ByteArray
+    ): Long
+
+    @JvmStatic
+    external fun ratchetEncrypt(
+            statePtr: Long,
+            plaintext: ByteArray,
+            ad: ByteArray
+    ): Map<String, Any>?
+
+    @JvmStatic
+    external fun ratchetDecrypt(
+            statePtr: Long,
+            header: ByteArray,
+            ciphertext: ByteArray,
+            ad: ByteArray
+    ): ByteArray?
+
+    @JvmStatic external fun ratchetFree(statePtr: Long)
   }
 }

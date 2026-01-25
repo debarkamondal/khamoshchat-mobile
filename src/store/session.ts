@@ -4,7 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { Alert } from "react-native";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 
-type Session = {
+export type Session = {
   phone: {
     countryCode: string;
     number: number;

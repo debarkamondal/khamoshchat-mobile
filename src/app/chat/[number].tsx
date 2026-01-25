@@ -6,14 +6,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import * as Contacts from "expo-contacts";
-import { Buffer } from "buffer";
 import { View, StyleSheet } from "react-native";
+import { sendInitialMessage, receiveInitialMessage } from '@/src/utils/messageHandler';
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import useSession from "@/src/store/session";
-import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 import useMqtt from "@/src/hooks/connectMqttServer";
 
 export default function Chat() {
@@ -26,91 +25,32 @@ export default function Chat() {
 
   const fetchChats = () => [];
 
-  // Helper function to serialize Bob's key bundle
-  const serializeBobBundle = (
-    identityKey: Uint8Array,
-    spkId: number,
-    spkPublic: Uint8Array,
-    signature: Uint8Array,
-    opkId: number,
-    opkPublic: Uint8Array | null,
-    hasOpk: boolean
-  ): Uint8Array => {
-    const size = hasOpk ? 200 : 168;
-    const buffer = new ArrayBuffer(size);
-    const view = new DataView(buffer);
-    const bytes = new Uint8Array(buffer);
-
-    bytes.set(identityKey, 0);           // 0-31: identityKey (32 bytes)
-    view.setUint32(32, spkId, true);     // 32-35: spkId (4 bytes, little-endian)
-    bytes.set(spkPublic, 36);            // 36-67: spkPublic (32 bytes)
-    bytes.set(signature, 68);            // 68-163: signature (96 bytes)
-    view.setUint32(164, opkId, true);    // 164-167: opkId (4 bytes, little-endian)
-    if (hasOpk && opkPublic) {
-      bytes.set(opkPublic, 168);         // 168-199: opkPublic (32 bytes)
-    }
-    return bytes;
-  };
-
-  type PreKeyBundle = {
-    identityKey: string;
-    signature: string;
-    signedPreKey: string;
-    opk: {
-      id: number;
-      key: string;
-    };
-  };
 
   const sendMessage = async () => {
-    const sign = await LibsignalDezireModule.vxeddsaSign(session.preKey, new TextEncoder().encode(number))
-    const body = {
-      phone: session.phone.countryCode + session.phone.number,
-      signature: Buffer.from(sign.signature).toString('base64'),
-      vrf: Buffer.from(sign.vrf).toString('base64'),
-    };
-
-    let preKeyBundle: PreKeyBundle | undefined;
     if (fetchChats().length === 0) {
-      const res = await fetch(`https://identity.dkmondal.in/test/bundle/${number}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-      if (res.ok) {
-        preKeyBundle = await res.json();
-      } else {
-        console.log("Failed to fetch bundle:", await res.text());
-      }
-    }
-
-    if (preKeyBundle) {
-      const hasOpk = true;
-      const bobBundle = serializeBobBundle(
-        Buffer.from(preKeyBundle.identityKey, 'base64'),
-        1, // spkId - hardcoded for now, adjust as needed
-        Buffer.from(preKeyBundle.signedPreKey, 'base64'),
-        Buffer.from(preKeyBundle.signature, 'base64'),
-        preKeyBundle.opk.id,
-        Buffer.from(preKeyBundle.opk.key, 'base64'),
-        hasOpk
-      );
-
-      const result = await LibsignalDezireModule.x3dhInitiator(
-        session.iKey,
-        bobBundle,
-        hasOpk
-      );
-      if (!client) return;
-      client.publish(`/khamoshchat/${encodeURIComponent(number)}/${encodeURIComponent(session.phone.countryCode + session.phone.number)}`, JSON.stringify(result));
+      // Logic for initial message (simplified in component, moved to utils)
+      // Note: we are passing client which might be undefined, but the utility handles it (sort of, we might need to check client existence before calling if we want to be strict, but the original code had checks scattered. The utility has `if (!client) return;` at the end).
+      // However, to match the utility signature we need session, number, client.
+      await sendInitialMessage(session, number, client);
     }
   };
   useEffect(() => {
     if (!client) return;
     client.on("message", (topic, message) => {
-      console.log(topic, JSON.parse(message.toString()));
+      const parsedMessage = JSON.parse(message.toString());
+      console.log(topic, parsedMessage);
+      if (fetchChats().length === 0) {
+        (async () => {
+          try {
+            // Assuming the message payload structure matches what receiveInitialMessage expects
+            // The payload sent by sendInitialMessage is { identityKey, ephemeralKey, opkId }
+            const sharedSecret = await receiveInitialMessage(session, parsedMessage);
+            console.log("Shared Secret:", sharedSecret);
+          } catch (e) {
+            console.error("Error receiving initial message:", e);
+          }
+        })();
+      }
     });
   }, [client])
   useEffect(() => {
