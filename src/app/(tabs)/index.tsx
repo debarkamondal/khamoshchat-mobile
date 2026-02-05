@@ -1,4 +1,5 @@
 import { KeyPair } from "@/modules/libsignal-dezire";
+import useSession from "@/src/store/session";
 import * as Crypto from "expo-crypto";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 import StyledButton from "@/src/components/StyledButton";
@@ -12,37 +13,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function Index() {
   const insets = useSafeAreaInsets();
-  const [keyPair, setKeyPair] = useState<KeyPair>({
-    public: new Uint8Array(32),
-    secret: new Uint8Array(32),
-  });
-  const sign = async () => {
-    const keypair = await LibsignalDezireModule.genKeyPair();
-    const message = "Hello World";
-    const hash = await Crypto.digestStringAsync(
-      Crypto.CryptoDigestAlgorithm.SHA256,
-      message,
-    );
-    const match = hash.match(/.{1,2}/g);
-    const bytes = new Uint8Array(match!.map((byte) => parseInt(byte, 16)));
-    const res = await LibsignalDezireModule.vxeddsaSign(
-      keypair.secret,
-      bytes,
-    );
-    // console.log("Signature:", res.signature);
-    // console.log("VFR:", res.vfr);
-    // const verificationResult = await LibsignalDezireModule.vxeddsaVerify(
-    //   keypair.public,
-    //   bytes,
-    //   res.signature,
-    // );
-    // console.log("Verification Result:", verificationResult);
-    const pubkey = await LibsignalDezireModule.genPubKey(keypair.secret);
-    const newSecret = await LibsignalDezireModule.genSecret();
-  };
-  useEffect(() => {
-    sign();
-  }, []);
 
   // Theme-dependent styles (memoized by theme)
   const themedStyles = useThemedStyles((colors) => ({

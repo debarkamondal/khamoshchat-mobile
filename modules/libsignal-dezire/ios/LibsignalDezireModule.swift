@@ -47,9 +47,15 @@ public class LibsignalDezireModule: Module {
         }
         AsyncFunction("genPubKey") { (kData: Data) -> Data in
             let k = [UInt8](kData)
-            var pubkey = [UInt8](repeating: 0, count: 32)
+            
+            guard k.count == 32 else {
+                throw NSError(
+                    domain: "LibsignalDezire", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Key must be 32 bytes"])
+            }
+            
+            var pubkey = [UInt8](repeating: 0, count: 33)
             gen_pubkey_ffi(k, &pubkey)
-
             return Data(pubkey)
         }
 
@@ -66,7 +72,7 @@ public class LibsignalDezireModule: Module {
                 Data(bytes: $0, count: 32)
             }
             let publicData = withUnsafePointer(to: &keys.public_) {
-                Data(bytes: $0, count: 32)
+                Data(bytes: $0, count: 33)
             }
 
             return [
@@ -80,7 +86,8 @@ public class LibsignalDezireModule: Module {
             let M = [UInt8](MData)
             let signature = [UInt8](signatureData)
 
-            guard u.count == 32, signature.count == 96 else {
+            guard u.count == 33, signature.count == 96 else {
+                
                 throw NSError(
                     domain: "LibsignalDezire", code: 1,
                     userInfo: [NSLocalizedDescriptionKey: "Invalid input lengths"])
@@ -97,15 +104,15 @@ public class LibsignalDezireModule: Module {
         }
 
         // X3DH Initiator (Alice)
-        // Bundle format: [identityKey:32][spkId:4][spkPublic:32][signature:96][opkId:4][opkPublic:32?]
-        // Total: 168 bytes (without OPK) or 200 bytes (with OPK)
+        // Bundle format: [identityKey:33][spkId:4][spkPublic:33][signature:96][opkId:4][opkPublic:33?]
+        // Total: 170 bytes (without OPK) or 203 bytes (with OPK)
         AsyncFunction("x3dhInitiator") { (
             identityPrivate: Data,
             bobBundle: Data,
             hasOpk: Bool
         ) -> [String: Data] in
             // Validate bundle size
-            let expectedSize = hasOpk ? 200 : 168
+            let expectedSize = hasOpk ? 203 : 170
             guard bobBundle.count == expectedSize else {
                 throw NSError(
                     domain: "LibsignalDezire", code: 1,
@@ -119,12 +126,12 @@ public class LibsignalDezireModule: Module {
             }
             
             // Parse bundle
-            let bobIdentityPublic = [UInt8](bobBundle.subdata(in: 0..<32))
-            let bobSpkId = bobBundle.subdata(in: 32..<36).withUnsafeBytes { $0.load(as: UInt32.self) }
-            let bobSpkPublic = [UInt8](bobBundle.subdata(in: 36..<68))
-            let bobSpkSignature = [UInt8](bobBundle.subdata(in: 68..<164))
-            let bobOpkId = bobBundle.subdata(in: 164..<168).withUnsafeBytes { $0.load(as: UInt32.self) }
-            let bobOpkPublic: [UInt8] = hasOpk ? [UInt8](bobBundle.subdata(in: 168..<200)) : [UInt8](repeating: 0, count: 32)
+            let bobIdentityPublic = [UInt8](bobBundle.subdata(in: 0..<33))
+            let bobSpkId = bobBundle.subdata(in: 33..<37).withUnsafeBytes { $0.load(as: UInt32.self) }
+            let bobSpkPublic = [UInt8](bobBundle.subdata(in: 37..<70))
+            let bobSpkSignature = [UInt8](bobBundle.subdata(in: 70..<166))
+            let bobOpkId = bobBundle.subdata(in: 166..<170).withUnsafeBytes { $0.load(as: UInt32.self) }
+            let bobOpkPublic: [UInt8] = hasOpk ? [UInt8](bobBundle.subdata(in: 170..<203)) : [UInt8](repeating: 0, count: 33)
             let identityPrivateBytes = [UInt8](identityPrivate)
 
             let outputPtr = UnsafeMutablePointer<X3DHInitOutput>.allocate(capacity: 1)
@@ -134,13 +141,13 @@ public class LibsignalDezireModule: Module {
             var bundleInput = X3DHBundleInput()
             withUnsafeMutableBytes(of: &bundleInput.identity_public) { ptr in
                 _ = bobIdentityPublic.withUnsafeBytes { src in
-                    memcpy(ptr.baseAddress!, src.baseAddress!, 32)
+                    memcpy(ptr.baseAddress!, src.baseAddress!, 33)
                 }
             }
             bundleInput.spk_id = bobSpkId
             withUnsafeMutableBytes(of: &bundleInput.spk_public) { ptr in
                 _ = bobSpkPublic.withUnsafeBytes { src in
-                    memcpy(ptr.baseAddress!, src.baseAddress!, 32)
+                    memcpy(ptr.baseAddress!, src.baseAddress!, 33)
                 }
             }
             withUnsafeMutableBytes(of: &bundleInput.spk_signature) { ptr in
@@ -151,7 +158,7 @@ public class LibsignalDezireModule: Module {
             bundleInput.opk_id = bobOpkId
             withUnsafeMutableBytes(of: &bundleInput.opk_public) { ptr in
                 _ = bobOpkPublic.withUnsafeBytes { src in
-                    memcpy(ptr.baseAddress!, src.baseAddress!, 32)
+                    memcpy(ptr.baseAddress!, src.baseAddress!, 33)
                 }
             }
             bundleInput.has_opk = hasOpk
@@ -165,7 +172,7 @@ public class LibsignalDezireModule: Module {
                 Data(bytes: $0, count: 32)
             }
             let ephemeralPublic = withUnsafePointer(to: &outputPtr.pointee.ephemeral_public) {
-                Data(bytes: $0, count: 32)
+                Data(bytes: $0, count: 33)
             }
             let status = outputPtr.pointee.status
 
@@ -191,8 +198,8 @@ public class LibsignalDezireModule: Module {
         ) -> [String: Data] in
             guard identityPrivate.count == 32,
                   signedPrekeyPrivate.count == 32,
-                  aliceIdentityPublic.count == 32,
-                  aliceEphemeralPublic.count == 32 else {
+                  aliceIdentityPublic.count == 33,
+                  aliceEphemeralPublic.count == 33 else {
                 throw NSError(
                     domain: "LibsignalDezire", code: 1,
                     userInfo: [NSLocalizedDescriptionKey: "Invalid input lengths"])
@@ -241,12 +248,12 @@ public class LibsignalDezireModule: Module {
             var aliceKeys = X3DHAliceKeys()
             withUnsafeMutableBytes(of: &aliceKeys.identity_public) { ptr in
                 _ = aliceIdPubBytes.withUnsafeBytes { src in
-                    memcpy(ptr.baseAddress!, src.baseAddress!, 32)
+                    memcpy(ptr.baseAddress!, src.baseAddress!, 33)
                 }
             }
             withUnsafeMutableBytes(of: &aliceKeys.ephemeral_public) { ptr in
                 _ = aliceEkPubBytes.withUnsafeBytes { src in
-                    memcpy(ptr.baseAddress!, src.baseAddress!, 32)
+                    memcpy(ptr.baseAddress!, src.baseAddress!, 33)
                 }
             }
 
@@ -268,20 +275,7 @@ public class LibsignalDezireModule: Module {
             ]
         }
 
-        // Encode Public Key (prepends 0x05 for Curve25519)
-        AsyncFunction("encodePublicKey") { (keyData: Data) -> Data in
-            guard keyData.count == 32 else {
-                throw NSError(
-                    domain: "LibsignalDezire", code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Key must be 32 bytes"])
-            }
 
-            let keyBytes = [UInt8](keyData)
-            var out = [UInt8](repeating: 0, count: 33)
-            encode_public_key_ffi(keyBytes, &out)
-
-            return Data(out)
-        }
         
         // ============================================================================
         // Ratchet Logic (In-Memory Only)
@@ -291,7 +285,7 @@ public class LibsignalDezireModule: Module {
         var ratchetSessions = [String: OpaquePointer]()
         
         AsyncFunction("ratchetInitSender") { (sharedSecret: Data, receiverPublicKey: Data) -> String in
-            guard sharedSecret.count == 32, receiverPublicKey.count == 32 else {
+            guard sharedSecret.count == 32, receiverPublicKey.count == 33 else {
                  throw NSError(
                     domain: "LibsignalDezire", code: 1,
                     userInfo: [NSLocalizedDescriptionKey: "Keys must be 32 bytes"])
@@ -312,7 +306,7 @@ public class LibsignalDezireModule: Module {
         }
         
         AsyncFunction("ratchetInitReceiver") { (sharedSecret: Data, receiverPrivateKey: Data, receiverPublicKey: Data) -> String in
-            guard sharedSecret.count == 32, receiverPrivateKey.count == 32, receiverPublicKey.count == 32 else {
+            guard sharedSecret.count == 32, receiverPrivateKey.count == 32, receiverPublicKey.count == 33 else {
                  throw NSError(
                     domain: "LibsignalDezire", code: 1,
                     userInfo: [NSLocalizedDescriptionKey: "Keys must be 32 bytes"])
@@ -408,6 +402,36 @@ public class LibsignalDezireModule: Module {
             return plaintext
         }
         
+        AsyncFunction("ratchetSerialize") { (uuid: String) -> String in
+            guard let statePtr = ratchetSessions[uuid] else {
+                 throw NSError(
+                    domain: "LibsignalDezire", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Session not found"])
+            }
+            
+            guard let cStr = ratchet_serialize(statePtr) else {
+                 throw NSError(
+                    domain: "LibsignalDezire", code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "Serialization failed"])
+            }
+            
+            let str = String(cString: cStr)
+            ratchet_free_string(cStr)
+            return str
+        }
+        
+        AsyncFunction("ratchetDeserialize") { (json: String) -> String in
+            guard let statePtr = ratchet_deserialize(json) else {
+                 throw NSError(
+                    domain: "LibsignalDezire", code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "Deserialization failed"])
+            }
+            
+            let uuid = UUID().uuidString
+            ratchetSessions[uuid] = statePtr
+            return uuid
+        }
+
         AsyncFunction("ratchetFree") { (uuid: String) in
             guard let statePtr = ratchetSessions[uuid] else {
                 return // Already freed or not found

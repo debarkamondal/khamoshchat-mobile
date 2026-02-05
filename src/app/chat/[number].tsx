@@ -6,61 +6,101 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import * as Contacts from "expo-contacts";
-import { View, StyleSheet } from "react-native";
-import { sendInitialMessage, receiveInitialMessage } from '@/src/utils/messageHandler';
+import { View, StyleSheet, Alert, FlatList } from "react-native";
+import { sendInitialMessage, sendMessage } from '@/src/utils/messages';
+import { getMessages, subscribe } from "@/src/utils/chat";
+import ChatBubble from "@/src/components/ChatBubble";
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import useSession from "@/src/store/session";
-import useMqtt from "@/src/hooks/connectMqttServer";
+import useMqttStore from "@/src/store/mqtt";
+import {
+  initSender,
+  encryptMessage,
+  isRatchetInitialized,
+  getIdentityKey,
+  loadRatchetSession,
+  clearSession
+} from "@/src/utils/ratchet";
+
 
 export default function Chat() {
-  const { colors } = useTheme();
-  const session = useSession();
+  const [name, setName] = useState<string>();
+  const [message, setMessage] = useState<string>("");
   const { number, id }: { number: string; id: string } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
-  const [name, setName] = useState<string>();
-  const client = useMqtt(session.phone.countryCode + session.phone.number);
+  const [chatMessages, setChatMessages] = useState(getMessages(number));
 
-  const fetchChats = () => [];
+  const { colors } = useTheme();
+  const session = useSession();
+  const { client } = useMqttStore();
 
-
-  const sendMessage = async () => {
-    if (fetchChats().length === 0) {
-      // Logic for initial message (simplified in component, moved to utils)
-      // Note: we are passing client which might be undefined, but the utility handles it (sort of, we might need to check client existence before calling if we want to be strict, but the original code had checks scattered. The utility has `if (!client) return;` at the end).
-      // However, to match the utility signature we need session, number, client.
-      await sendInitialMessage(session, number, client);
-    }
-  };
   useEffect(() => {
-    if (!client) return;
-    client.on("message", (topic, message) => {
-      const parsedMessage = JSON.parse(message.toString());
-      console.log(topic, parsedMessage);
-      if (fetchChats().length === 0) {
-        (async () => {
-          try {
-            // Assuming the message payload structure matches what receiveInitialMessage expects
-            // The payload sent by sendInitialMessage is { identityKey, ephemeralKey, opkId }
-            const sharedSecret = await receiveInitialMessage(session, parsedMessage);
-            console.log("Shared Secret:", sharedSecret);
-          } catch (e) {
-            console.error("Error receiving initial message:", e);
-          }
-        })();
-      }
+    // Subscribe to message updates
+    const unsubscribe = subscribe(() => {
+      setChatMessages([...getMessages(number)]);
     });
-  }, [client])
+    return unsubscribe;
+  }, [number]);
+
+  const handleSendMessage = async (msg: string) => {
+    if (!msg.trim()) return;
+
+    // Check if we already have a session with this user
+    let hasSession = await isRatchetInitialized(number);
+    if (!hasSession) {
+      // Try loading from storage
+      await loadRatchetSession(number);
+      hasSession = await isRatchetInitialized(number);
+    }
+
+    if (hasSession) {
+      // Check for identity key integrity
+      const identityKey = await getIdentityKey(number);
+
+      if (!identityKey) {
+        console.warn("Session broken: missing identity key. Clearing session and retrying as initial message.");
+        await clearSession(number);
+        hasSession = false;
+      } else {
+        // Send subsequent message
+        await sendMessage({
+          session,
+          number,
+          message: msg,
+          client,
+          encrypt: (plaintext, ad) => encryptMessage(number, plaintext, ad),
+          recipientIdentityKey: identityKey
+        });
+      }
+    }
+
+    if (!hasSession) {
+      // Send initial X3DH message
+      await sendInitialMessage({
+        session,
+        number,
+        message: msg,
+        client,
+        initSender: (sharedSecret, receiverPub, identityKey) => initSender(number, sharedSecret, receiverPub, identityKey),
+        encrypt: (plaintext, ad) => encryptMessage(number, plaintext, ad)
+      });
+    }
+    setMessage("");
+  };
+
   useEffect(() => {
-    fetchChats();
     (async () => {
-      // console.log(typeof urlParam.id);
-      const data = await Contacts.getContactByIdAsync(id.split("/")[0]);
-      setName(data?.firstName + " " + data?.lastName);
+      if (id) {
+        const data = await Contacts.getContactByIdAsync(id.split("/")[0]);
+        setName(data?.firstName + " " + (data?.lastName || ""));
+      } else {
+        setName(number);
+      }
     })();
-  }, []);
+  }, [id, number]);
 
   // Theme-dependent styles (memoized by theme)
   const themedStyles = useThemedStyles((colors) => ({
@@ -68,14 +108,19 @@ export default function Chat() {
       flex: 1,
       backgroundColor: colors.backgroundPrimary,
     },
+    messageContainer: {
+      flex: 1,
+      paddingHorizontal: 16,
+    },
   }));
 
   // Insets-dependent styles (memoized by insets)
   const messageBarInsetStyle = useMemo(() => ({
     paddingBottom: insets.bottom,
   }), [insets.bottom]);
+
   return (
-    <SafeAreaView style={themedStyles.container}>
+    <SafeAreaView style={themedStyles.container} edges={['top']}>
       <View style={styles.header}>
         <StyledButton onPress={() => router.back()} variant="link">
           <Ionicons
@@ -85,26 +130,40 @@ export default function Chat() {
           />
         </StyledButton>
         <StyledText style={styles.image}>
-          <Ionicons name="search" size={24} />
+          <Ionicons name="person-circle-outline" size={32} />
         </StyledText>
-        <StyledText>{name}</StyledText>
+        <StyledText style={styles.headerTitle}>{name || number}</StyledText>
       </View>
+
+      <FlatList
+        style={themedStyles.messageContainer}
+        data={chatMessages}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <ChatBubble message={item} />
+        )}
+        contentContainerStyle={{ paddingBottom: 100 }} // Space for input bar
+      />
+
       <View
         style={StyleSheet.flatten([
           messageBarInsetStyle,
           styles.messageBar,
+          { backgroundColor: colors.backgroundPrimary } // Ensure background covers list
         ])}
       >
         <StyledTextInput
           style={styles.messageInput}
           placeholder={"Send message"}
+          value={message}
+          onChangeText={setMessage}
         />
         <StyledButton
-          onPress={() => sendMessage()}
+          onPress={() => handleSendMessage(message)}
           style={styles.messageButton}
         >
           <StyledText>
-            <Ionicons name="send" size={24} />
+            <Ionicons name="send" size={24} color={colors.textPrimary} />
           </StyledText>
         </StyledButton>
       </View>
@@ -121,6 +180,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
   },
   messageButton: {
     paddingHorizontal: 10,

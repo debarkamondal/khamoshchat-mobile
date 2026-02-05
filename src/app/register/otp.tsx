@@ -23,7 +23,9 @@ export default function otp() {
   const submit = async (otp: number) => {
     if (!preKey || !iKey) return;
     const pubPreKey = await LibsignalDezireModule.genPubKey(preKey)
-    const { signature, vrf } = await LibsignalDezireModule.vxeddsaSign(iKey, await LibsignalDezireModule.encodePublicKey(pubPreKey));
+    const { signature, vrf } = await LibsignalDezireModule.vxeddsaSign(iKey, pubPreKey);
+    const temp = await LibsignalDezireModule.vxeddsaVerify(await LibsignalDezireModule.genPubKey(iKey), pubPreKey, signature)
+    console.log("sign:", temp)
     const b64Sign = btoa(String.fromCharCode(...signature));
     const b64PreKey = btoa(String.fromCharCode(...pubPreKey));
     const b64Opks = await genOpks();
@@ -41,7 +43,6 @@ export default function otp() {
       method: "POST",
       body: JSON.stringify(body),
     });
-    console.log(await res.text())
     if (res.status === 204) {
       markSesssionRegistered();
       router.replace("/");

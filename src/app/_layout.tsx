@@ -1,9 +1,11 @@
 import * as SplashScreen from "expo-splash-screen";
 import { Stack } from "expo-router";
+import { useEffect } from "react";
 import useSession from "./../store/session";
-import { ThemeProvider, useTheme } from "@/src/hooks/useTheme";
 import { Platform } from "react-native";
+import { ThemeProvider, useTheme } from "@/src/hooks/useTheme";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
+import useMqtt from "@/src/hooks/useMqtt";
 
 // Set the animation options. This is optional.
 SplashScreen.setOptions({
@@ -30,6 +32,12 @@ export default function RootLayout() {
 
 function InnerLayout({ isRegistered }: { isRegistered: boolean }) {
   const { colors } = useTheme();
+  const session = useSession();
+  const topic = session.phone.countryCode + session.phone.number;
+
+  // Consolidated hook handles connection + store sync + message listening
+  useMqtt(isRegistered ? topic : "");
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={isRegistered}>

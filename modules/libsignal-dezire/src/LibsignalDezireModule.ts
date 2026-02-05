@@ -31,35 +31,35 @@ declare class LibsignalDezireModule extends NativeModule {
     aliceEphemeralPublic: Uint8Array,
   ): Promise<X3DHResponderOutput>;
 
-  // Utils
-  encodePublicKey(key: Uint8Array): Promise<Uint8Array>;
 
   // Ratchet
   ratchetInitSender(
     sk: Uint8Array,
     receiverPub: Uint8Array,
-  ): Promise<number>;
+  ): Promise<string>;
 
   ratchetInitReceiver(
     sk: Uint8Array,
     receiverPriv: Uint8Array,
     receiverPub: Uint8Array,
-  ): Promise<number>;
+  ): Promise<string>;
 
   ratchetEncrypt(
-    statePtr: number,
+    statePtr: string,
     plaintext: Uint8Array,
     ad?: Uint8Array,
   ): Promise<RatchetEncryptResult | null>;
 
   ratchetDecrypt(
-    statePtr: number,
+    statePtr: string,
     header: Uint8Array,
     ciphertext: Uint8Array,
     ad?: Uint8Array,
   ): Promise<Uint8Array | null>;
 
-  ratchetFree(statePtr: number): Promise<void>;
+  ratchetFree(statePtr: string): Promise<void>;
+  ratchetSerialize(statePtr: string): Promise<string>;
+  ratchetDeserialize(json: string): Promise<string>;
 }
 
 // This call loads the native module object from the JSI.
