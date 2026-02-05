@@ -6,53 +6,41 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import * as Contacts from "expo-contacts";
-import { View, StyleSheet } from "react-native";
-import { sendInitialMessage, receiveInitialMessage } from '@/src/utils/messageHandler';
+import { View, StyleSheet, Alert } from "react-native";
+import { sendInitialMessage } from '@/src/utils/messages';
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import useSession from "@/src/store/session";
-import useMqtt from "@/src/hooks/connectMqttServer";
+import useMqttStore from "@/src/store/mqtt";
+import { useRatchet } from "@/src/hooks/useRatchet";
+
 
 export default function Chat() {
-  const { colors } = useTheme();
-  const session = useSession();
+  const [name, setName] = useState<string>();
   const { number, id }: { number: string; id: string } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
-  const [name, setName] = useState<string>();
-  const client = useMqtt(session.phone.countryCode + session.phone.number);
+
+  const { colors } = useTheme();
+  const session = useSession();
+  const { client } = useMqttStore();
+  const { initSender, encrypt } = useRatchet(number);
 
   const fetchChats = () => [];
 
-
-  const sendMessage = async () => {
+  const sendMessage = async (message: string) => {
     if (fetchChats().length === 0) {
-      // Logic for initial message (simplified in component, moved to utils)
-      // Note: we are passing client which might be undefined, but the utility handles it (sort of, we might need to check client existence before calling if we want to be strict, but the original code had checks scattered. The utility has `if (!client) return;` at the end).
-      // However, to match the utility signature we need session, number, client.
-      await sendInitialMessage(session, number, client);
+      await sendInitialMessage({
+        session,
+        number,
+        message,
+        client,
+        initSender,
+        encrypt
+      });
     }
   };
-  useEffect(() => {
-    if (!client) return;
-    client.on("message", (topic, message) => {
-      const parsedMessage = JSON.parse(message.toString());
-      console.log(topic, parsedMessage);
-      if (fetchChats().length === 0) {
-        (async () => {
-          try {
-            // Assuming the message payload structure matches what receiveInitialMessage expects
-            // The payload sent by sendInitialMessage is { identityKey, ephemeralKey, opkId }
-            const sharedSecret = await receiveInitialMessage(session, parsedMessage);
-            console.log("Shared Secret:", sharedSecret);
-          } catch (e) {
-            console.error("Error receiving initial message:", e);
-          }
-        })();
-      }
-    });
-  }, [client])
   useEffect(() => {
     fetchChats();
     (async () => {
@@ -100,7 +88,7 @@ export default function Chat() {
           placeholder={"Send message"}
         />
         <StyledButton
-          onPress={() => sendMessage()}
+          onPress={() => sendMessage("test")}
           style={styles.messageButton}
         >
           <StyledText>

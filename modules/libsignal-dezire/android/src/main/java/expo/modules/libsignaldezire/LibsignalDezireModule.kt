@@ -24,7 +24,9 @@ class LibsignalDezireModule : Module() {
 
     AsyncFunction("genKeyPair") { genKeyPair() ?: throw Exception("Failed to generate key pair") }
 
-    AsyncFunction("genPubKey") { k: ByteArray -> genPubKey(k) }
+    AsyncFunction("genPubKey") { k: ByteArray ->
+      genPubKey(k) ?: throw Exception("Failed to generate public key")
+    }
 
     AsyncFunction("genSecret") { genSecret() }
 
@@ -36,21 +38,18 @@ class LibsignalDezireModule : Module() {
     }
 
     AsyncFunction("vxeddsaVerify") { u: ByteArray, m: ByteArray, signature: ByteArray ->
-      if (u.size != 32 || signature.size != 96) {
+      if (u.size != 33 || signature.size != 96) {
         throw Exception("Invalid input lengths")
       }
       vxeddsaVerify(u, m, signature)
     }
 
-    AsyncFunction("encodePublicKey") { k: ByteArray -> encodePublicKey(k) }
-
-    // X3DH Initiator with bundled arguments
-    // Bundle format: [identityKey:32][spkId:4][spkPublic:32][signature:96][opkId:4][opkPublic:32?]
+    // Bundle format: [identityKey:33][spkId:4][spkPublic:33][signature:96][opkId:4][opkPublic:33?]
     AsyncFunction("x3dhInitiator") {
             identityPrivate: ByteArray,
             bobBundle: ByteArray,
             hasOpk: Boolean ->
-      val expectedSize = if (hasOpk) 200 else 168
+      val expectedSize = if (hasOpk) 203 else 170
       if (bobBundle.size != expectedSize) {
         throw Exception("Invalid bundle size. Expected $expectedSize, got ${bobBundle.size}")
       }
@@ -61,12 +60,12 @@ class LibsignalDezireModule : Module() {
       // Parse bundle using ByteBuffer for little-endian integers
       val buffer = ByteBuffer.wrap(bobBundle).order(ByteOrder.LITTLE_ENDIAN)
 
-      val bobIdentityPublic = ByteArray(32)
+      val bobIdentityPublic = ByteArray(33)
       buffer.get(bobIdentityPublic)
 
       val bobSpkId = buffer.getInt()
 
-      val bobSpkPublic = ByteArray(32)
+      val bobSpkPublic = ByteArray(33)
       buffer.get(bobSpkPublic)
 
       val bobSpkSignature = ByteArray(96)
@@ -76,7 +75,7 @@ class LibsignalDezireModule : Module() {
 
       val bobOpkPublic: ByteArray? =
               if (hasOpk) {
-                val opk = ByteArray(32)
+                val opk = ByteArray(33)
                 buffer.get(opk)
                 opk
               } else {
@@ -105,8 +104,8 @@ class LibsignalDezireModule : Module() {
             aliceEphemeralPublic: ByteArray ->
       if (identityPrivate.size != 32 ||
                       signedPrekeyPrivate.size != 32 ||
-                      aliceIdentityPublic.size != 32 ||
-                      aliceEphemeralPublic.size != 32
+                      aliceIdentityPublic.size != 33 ||
+                      aliceEphemeralPublic.size != 33
       ) {
         throw Exception("Invalid input lengths")
       }
@@ -132,7 +131,7 @@ class LibsignalDezireModule : Module() {
     // ============================================================================
 
     AsyncFunction("ratchetInitSender") { sharedSecret: ByteArray, receiverPublicKey: ByteArray ->
-      if (sharedSecret.size != 32 || receiverPublicKey.size != 32) {
+      if (sharedSecret.size != 32 || receiverPublicKey.size != 33) {
         throw Exception("Keys must be 32 bytes")
       }
       val statePtr = ratchetInitSender(sharedSecret, receiverPublicKey)
@@ -145,7 +144,7 @@ class LibsignalDezireModule : Module() {
             sharedSecret: ByteArray,
             receiverPrivateKey: ByteArray,
             receiverPublicKey: ByteArray ->
-      if (sharedSecret.size != 32 || receiverPrivateKey.size != 32 || receiverPublicKey.size != 32
+      if (sharedSecret.size != 32 || receiverPrivateKey.size != 32 || receiverPublicKey.size != 33
       ) {
         throw Exception("Keys must be 32 bytes")
       }
@@ -179,6 +178,21 @@ class LibsignalDezireModule : Module() {
       result
     }
 
+    AsyncFunction("ratchetSerialize") { uuid: String ->
+      val statePtr = ratchetSessions[uuid] ?: throw Exception("Session not found")
+      ratchetSerialize(statePtr)
+    }
+
+    AsyncFunction("ratchetDeserialize") { json: String ->
+      val statePtr = ratchetDeserialize(json)
+      if (statePtr == 0L) {
+        throw Exception("Failed to deserialize ratchet state")
+      }
+      val uuid = java.util.UUID.randomUUID().toString()
+      ratchetSessions[uuid] = statePtr
+      uuid
+    }
+
     AsyncFunction("ratchetFree") { uuid: String ->
       val statePtr = ratchetSessions[uuid]
       if (statePtr != null) {
@@ -203,8 +217,6 @@ class LibsignalDezireModule : Module() {
 
     @JvmStatic
     external fun vxeddsaVerify(u: ByteArray, m: ByteArray, signature: ByteArray): ByteArray?
-
-    @JvmStatic external fun encodePublicKey(k: ByteArray): ByteArray?
 
     @JvmStatic
     external fun x3dhInitiator(
@@ -252,5 +264,9 @@ class LibsignalDezireModule : Module() {
     ): ByteArray?
 
     @JvmStatic external fun ratchetFree(statePtr: Long)
+
+    @JvmStatic external fun ratchetSerialize(statePtr: Long): String
+
+    @JvmStatic external fun ratchetDeserialize(json: String): Long
   }
 }

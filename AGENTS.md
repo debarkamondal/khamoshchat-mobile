@@ -213,6 +213,11 @@ const keypair = await LibsignalDezireModule.genKeyPair();
 const signature = await LibsignalDezireModule.vxeddsaSign(key, message);
 ```
 
+   b. **Double Ratchet**: Ongoing messaging encryption
+      - Uses `RatchetSession` (TS) wrapping `libsignal-dezire` (Rust FFI).
+      - Handles `ratchetInitSender`, `ratchetInitReceiver`, `ratchetEncrypt`, `ratchetDecrypt`.
+      - Manages opaque pointers to Rust `RatchetState` in native maps (`ratchetSessions`).
+
 ### Expo Router
 
 Routes are defined by file structure in `src/app/`:
@@ -229,3 +234,40 @@ Use `Stack.Protected` for conditional route guards based on auth state.
 - Typed routes enabled (`experiments.typedRoutes: true`)
 - Use `expo-secure-store` for sensitive data persistence
 - Avoid direct console.log in production code
+
+## Native Module Details (libsignal-dezire)
+
+The native module acts as a bridge to a Rust C-FFI library for Signal Protocol operations.
+
+### Key Features
+1. **X3DH**:
+   - `x3dhInitiator` (Alice): Generates shared secret + ephemeral key.
+   - `x3dhResponder` (Bob): Reconstructs shared secret from keys.
+2. **Double Ratchet**:
+   - `ratchetInitSender` / `ratchetInitReceiver`: Initializes session.
+   - `ratchetEncrypt` / `ratchetDecrypt`: Message encryption.
+   - `ratchetFree`: **CRITICAL** - Manually free Rust memory when session ends.
+
+### Memory Management
+- The Ratchet state is held in Rust heap memory.
+- Native modules (Swift/Kotlin) store pointers to this state in a `ratchetSessions` map, keyed by a UUID string.
+- The TS `RatchetSession` class automatically calls `ratchetFree` in its `close()` method.
+- **Always ensure `close()` is called** to prevent memory leaks.
+
+### FFI Architecture
+- **Rust**: Exposes C-compatible functions (`extern "C"`).
+- **iOS (Swift)**: Uses `UnsafeMutablePointer` to interact with C bindings.
+- **Android (Kotlin)**: Uses JNI `long` to store pointers.
+
+## Testing & Verification
+
+No automated test suite is currently set up for the UI.
+- **Unit Tests**: Rust library has internal tests (`cargo test`).
+- **Integration**: Use the verification scripts in `src/utils/` (e.g., `verifyRatchet.ts`) to test crypto flows.
+- **Manual**: Run the app on simulator/device and verify chat flows.
+
+```typescript
+// Example verification
+import { verifyRatchet } from "@/src/utils/verifyRatchet";
+verifyRatchet(); // Logs result to console
+```
