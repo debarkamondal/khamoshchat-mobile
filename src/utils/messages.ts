@@ -6,13 +6,14 @@ import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezir
 import { Session } from "@/src/store/session";
 import { RatchetEncryptResult } from "@/modules/libsignal-dezire/src/LibsignalDezire.types";
 import { MqttClient } from "mqtt";
+import { addMessage } from "./chat";
 
 type SendMessageParams = {
     session: Session;
     number: string;
     message: string;
     client: MqttClient | undefined;
-    initSender: (sharedSecret: Uint8Array, receiverPub: Uint8Array) => Promise<string | undefined>;
+    initSender: (sharedSecret: Uint8Array, receiverPub: Uint8Array, identityKey?: string) => Promise<string | undefined>;
     encrypt: (plaintext: Uint8Array, ad?: Uint8Array) => Promise<RatchetEncryptResult | null>;
 };
 
@@ -69,7 +70,11 @@ export const sendInitialMessage = async ({
         return;
     }
     const { sharedSecret, ephemeralKey } = await x3dhInitiator(session, preKeyBundle);
-    await initSender(sharedSecret, new Uint8Array(Buffer.from(preKeyBundle.signedPreKey, 'base64')));
+    await initSender(
+        sharedSecret,
+        new Uint8Array(Buffer.from(preKeyBundle.signedPreKey, 'base64')),
+        preKeyBundle.identityKey
+    );
 
     // Constructing AD
     const iKeyPubInitiator = await LibsignalDezireModule.genPubKey(session.iKey);
@@ -105,6 +110,10 @@ export const sendInitialMessage = async ({
             topic,
             JSON.stringify(payload)
         );
+        addMessage(number, {
+            text: message,
+            sender: 'me'
+        });
     }
 };
 
@@ -115,7 +124,8 @@ type ReceiveMessageParams = {
     initReceiver: (
         sharedSecret: Uint8Array,
         receiverPriv: Uint8Array,
-        receiverPub: Uint8Array
+        receiverPub: Uint8Array,
+        identityKey?: string
     ) => Promise<string | undefined>;
     decrypt: (
         header: Uint8Array,
@@ -124,7 +134,7 @@ type ReceiveMessageParams = {
     ) => Promise<Uint8Array | null>;
 };
 
-export const receiveMessage = async ({
+export const receiveInitialMessage = async ({
     session,
     payload,
     senderPhone,
@@ -152,7 +162,7 @@ export const receiveMessage = async ({
         // 4. Initialize Receiver Ratchet with SPK keypair
         const spkPrivate = session.preKey;
         const spkPublic = await LibsignalDezireModule.genPubKey(spkPrivate);
-        await initReceiver(sharedSecret, spkPrivate, spkPublic);
+        await initReceiver(sharedSecret, spkPrivate, spkPublic, payload.identityKey);
 
         // 5. Construct AD: sender's identity key || receiver's identity key
         const senderIdentityKey = new Uint8Array(Buffer.from(payload.identityKey, 'base64'));
@@ -170,15 +180,141 @@ export const receiveMessage = async ({
             console.error("Failed to decrypt message");
             return null;
         }
-        console.log("decrypted: ", Buffer.from(plaintext).toString('utf-8'))
 
-        return {
+        const ret = {
             sharedSecret,
             plaintext: Buffer.from(plaintext).toString('utf-8'),
             senderPhone,
         };
+        addMessage(senderPhone, {
+            text: Buffer.from(plaintext).toString('utf-8'),
+            sender: 'them'
+        });
+        return ret;
     } catch (e) {
         console.error("Error processing receive message:", e);
+        return null;
+    }
+};
+
+// Send message after ratchet is already initialized (subsequent messages)
+type SendMessageAfterInitParams = {
+    session: Session;
+    number: string;
+    message: string;
+    client: MqttClient | undefined;
+    encrypt: (plaintext: Uint8Array, ad?: Uint8Array) => Promise<RatchetEncryptResult | null>;
+    recipientIdentityKey: string; // Base64 encoded recipient's identity key
+};
+
+export const sendMessage = async ({
+    session,
+    number,
+    message,
+    client,
+    encrypt,
+    recipientIdentityKey,
+}: SendMessageAfterInitParams) => {
+    try {
+        // 1. Construct AD: sender's identity key || receiver's identity key
+        const senderIdentityPub = await LibsignalDezireModule.genPubKey(session.iKey);
+        const receiverIdentityKey = new Uint8Array(Buffer.from(recipientIdentityKey, 'base64'));
+        const ad = new Uint8Array(senderIdentityPub.length + receiverIdentityKey.length);
+        ad.set(senderIdentityPub);
+        ad.set(receiverIdentityKey, senderIdentityPub.length);
+
+        // 2. Encrypt the message
+        const ciphertext = await encrypt(new Uint8Array(Buffer.from(message, 'utf-8')), ad);
+
+        if (!ciphertext) {
+            Alert.alert("Error", "Failed to encrypt message");
+            return false;
+        }
+
+        // 3. Build payload (no X3DH bundle needed for subsequent messages)
+        const payload = {
+            ciphertext: Buffer.from(ciphertext.ciphertext).toString('base64'),
+            header: Buffer.from(ciphertext.header).toString('base64'),
+        };
+
+        // 4. Publish to MQTT
+        if (!client) {
+            console.error("No MQTT client available");
+            return false;
+        }
+
+        const senderPhone = session.phone.countryCode + session.phone.number;
+        const topic = `/khamoshchat/${encodeURIComponent(number)}/${encodeURIComponent(senderPhone)}`;
+        client.publish(topic, JSON.stringify(payload));
+
+        addMessage(number, {
+            text: message,
+            sender: 'me'
+        });
+
+        return true;
+    } catch (e) {
+        console.error("Error sending message:", e);
+        return false;
+    }
+};
+
+// Receive message after ratchet is already initialized (subsequent messages)
+type ReceiveSubsequentMessageParams = {
+    session: Session;
+    payload: { ciphertext: string; header: string };
+    senderPhone: string;
+    senderIdentityKey: string; // Base64 encoded sender's identity key (stored from initial message)
+    decrypt: (
+        header: Uint8Array,
+        ciphertext: Uint8Array,
+        ad?: Uint8Array
+    ) => Promise<Uint8Array | null>;
+};
+
+export const receiveMessage = async ({
+    session,
+    payload,
+    senderPhone,
+    senderIdentityKey,
+    decrypt,
+}: ReceiveSubsequentMessageParams) => {
+    try {
+        // 1. Construct AD: sender's identity key || receiver's identity key
+        const senderIdentityKeyBytes = new Uint8Array(Buffer.from(senderIdentityKey, 'base64'));
+        const receiverIdentityPub = await LibsignalDezireModule.genPubKey(session.iKey);
+        const ad = new Uint8Array(senderIdentityKeyBytes.length + receiverIdentityPub.length);
+        ad.set(senderIdentityKeyBytes);
+        ad.set(receiverIdentityPub, senderIdentityKeyBytes.length);
+
+        // 2. Decrypt the message
+        const header = new Uint8Array(Buffer.from(payload.header, 'base64'));
+        const ciphertext = new Uint8Array(Buffer.from(payload.ciphertext, 'base64'));
+        const plaintext = await decrypt(header, ciphertext, ad);
+
+        if (!plaintext) {
+            console.error("Failed to decrypt subsequent message");
+            return null;
+        }
+
+        if (!plaintext) {
+            console.error("Failed to decrypt subsequent message");
+            return null;
+        }
+
+        const ret = {
+            plaintext: Buffer.from(plaintext).toString('utf-8'),
+            senderPhone,
+        };
+
+        addMessage(senderPhone, {
+            text: Buffer.from(plaintext).toString('utf-8'),
+            sender: 'them'
+        });
+
+        return ret;
+    } catch (e) {
+        console.error("Error processing subsequent message:", e);
         return null;
     }
 };

@@ -4,8 +4,8 @@ import { Alert } from "react-native";
 import useMqttStore from "@/src/store/mqtt";
 import useSession from "@/src/store/session";
 import { X3DHBundle } from "@/src/utils/x3dh";
-import { receiveMessage } from "@/src/utils/messages";
-import { useRatchet } from "@/src/hooks/useRatchet";
+import { receiveInitialMessage, receiveMessage } from "@/src/utils/messages";
+import { initReceiver, decryptMessage, getIdentityKey } from "@/src/utils/ratchet";
 import { Buffer } from "buffer";
 
 const useMqtt = (topic: string) => {
@@ -50,7 +50,7 @@ const useMqtt = (topic: string) => {
                 console.error("MQTT Error:", err);
             });
 
-            // 3. Handle Messages (Consolidated from useGlobalMqttHandler)
+            // 3. Handle Messages
             const handleMessage = async (msgTopic: string, message: Buffer) => {
                 try {
                     const parsedMessage = JSON.parse(message.toString());
@@ -62,35 +62,27 @@ const useMqtt = (topic: string) => {
 
                     if (senderPhone && payload.identityKey && payload.ephemeralKey && payload.opkId !== undefined) {
                         if (session.isRegistered) {
-                            const LibsignalDezireModule = (await import("@/modules/libsignal-dezire/src/LibsignalDezireModule")).default;
-                            const SecureStore = await import("expo-secure-store");
-                            const storeKey = `ratchet_state_${senderPhone.substring(1)}`;
-
-                            // Closure to hold the ratchet UUID
-                            let ratchetUuid: string | null = null;
-
-                            const initReceiver = async (sharedSecret: Uint8Array, receiverPriv: Uint8Array, receiverPub: Uint8Array) => {
-                                ratchetUuid = await LibsignalDezireModule.ratchetInitReceiver(sharedSecret, receiverPriv, receiverPub);
-                                return ratchetUuid;
-                            };
-
-                            const decrypt = async (header: Uint8Array, ciphertext: Uint8Array, ad?: Uint8Array) => {
-                                if (!ratchetUuid) return null;
-                                const plaintext = await LibsignalDezireModule.ratchetDecrypt(ratchetUuid, header, ciphertext, ad);
-                                if (plaintext) {
-                                    const serialized = await LibsignalDezireModule.ratchetSerialize(ratchetUuid);
-                                    await SecureStore.setItemAsync(storeKey, serialized);
-                                }
-                                return plaintext;
-                            };
-
+                            await receiveInitialMessage({
+                                session,
+                                payload,
+                                senderPhone,
+                                initReceiver: (sharedSecret, receiverPriv, receiverPub, identityKey) =>
+                                    initReceiver(senderPhone, sharedSecret, receiverPriv, receiverPub, identityKey),
+                                decrypt: (header, ciphertext, ad) =>
+                                    decryptMessage(senderPhone, header, ciphertext, ad)
+                            });
+                        }
+                    } else if (senderPhone && payload.ciphertext && payload.header) {
+                        // Subsequent message
+                        const identityKey = await getIdentityKey(senderPhone);
+                        if (identityKey) {
                             await receiveMessage({
                                 session,
                                 payload,
                                 senderPhone,
-                                initReceiver,
-                                decrypt
-                            });
+                                senderIdentityKey: identityKey,
+                                decrypt: (header, ciphertext, ad) => decryptMessage(senderPhone, header, ciphertext, ad)
+                            })
                         }
                     }
                 } catch (e) {
@@ -109,13 +101,8 @@ const useMqtt = (topic: string) => {
 
         return () => {
             if (mqttClient) {
-                // console.log("Disconnecting MQTT client");
                 mqttClient.end();
             }
-            // Clear client from store on unmount/cleanup
-            // Note: If you want to persist the client across re-renders where topic doesn't change, 
-            // this effect handles that (it only re-runs on topic change). 
-            // setClient(undefined); 
         };
     }, [topic, session, setClient]);
 };
