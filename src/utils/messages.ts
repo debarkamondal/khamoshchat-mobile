@@ -6,7 +6,7 @@ import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezir
 import { Session } from "@/src/store/session";
 import { RatchetEncryptResult } from "@/modules/libsignal-dezire/src/LibsignalDezire.types";
 import { MqttClient } from "mqtt";
-import { addMessage } from "./chat";
+import { saveMessage } from "./db";
 
 type SendMessageParams = {
     session: Session;
@@ -110,9 +110,9 @@ export const sendInitialMessage = async ({
             topic,
             JSON.stringify(payload)
         );
-        addMessage(number, {
-            text: message,
-            sender: 'me'
+        await saveMessage(number, {
+            content: message,
+            sender_id: 'me',
         });
     }
 };
@@ -186,9 +186,9 @@ export const receiveInitialMessage = async ({
             plaintext: Buffer.from(plaintext).toString('utf-8'),
             senderPhone,
         };
-        addMessage(senderPhone, {
-            text: Buffer.from(plaintext).toString('utf-8'),
-            sender: 'them'
+        await saveMessage(senderPhone, {
+            content: Buffer.from(plaintext).toString('utf-8'),
+            sender_id: senderPhone,
         });
         return ret;
     } catch (e) {
@@ -247,9 +247,9 @@ export const sendMessage = async ({
         const topic = `/khamoshchat/${encodeURIComponent(number)}/${encodeURIComponent(senderPhone)}`;
         client.publish(topic, JSON.stringify(payload));
 
-        addMessage(number, {
-            text: message,
-            sender: 'me'
+        await saveMessage(number, {
+            content: message,
+            sender_id: 'me',
         });
 
         return true;
@@ -307,9 +307,9 @@ export const receiveMessage = async ({
             senderPhone,
         };
 
-        addMessage(senderPhone, {
-            text: Buffer.from(plaintext).toString('utf-8'),
-            sender: 'them'
+        await saveMessage(senderPhone, {
+            content: Buffer.from(plaintext).toString('utf-8'),
+            sender_id: senderPhone,
         });
 
         return ret;

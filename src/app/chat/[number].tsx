@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import * as Contacts from "expo-contacts";
 import { View, StyleSheet, Alert, FlatList } from "react-native";
 import { sendInitialMessage, sendMessage } from '@/src/utils/messages';
-import { getMessages, subscribe } from "@/src/utils/chat";
+import { getChatDatabase, closeChatDatabase, getMessages, subscribeToMessages, Message } from "@/src/utils/db";
 import ChatBubble from "@/src/components/ChatBubble";
 import {
   SafeAreaView,
@@ -31,18 +31,45 @@ export default function Chat() {
   const [message, setMessage] = useState<string>("");
   const { number, id }: { number: string; id: string } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
-  const [chatMessages, setChatMessages] = useState(getMessages(number));
+  const [chatMessages, setChatMessages] = useState<Message[]>([]);
 
   const { colors } = useTheme();
   const session = useSession();
   const { client } = useMqttStore();
 
   useEffect(() => {
-    // Subscribe to message updates
-    const unsubscribe = subscribe(() => {
-      setChatMessages([...getMessages(number)]);
+    let isMounted = true;
+
+    const initChat = async () => {
+      try {
+        // 1. Open Connection & Keep it open while screen is active
+        await getChatDatabase(number);
+        if (!isMounted) return;
+        console.log(`DB connection kept open for ${number}`);
+
+        // 2. Initial Fetch (now that DB is open, it won't close it)
+        const msgs = await getMessages(number);
+        if (isMounted) setChatMessages(msgs);
+      } catch (error) {
+        console.error("Failed to init chat DB:", error);
+      }
+    };
+
+    initChat();
+
+    // 3. Subscribe to updates
+    const unsubscribe = subscribeToMessages((updatedChatId) => {
+      if (updatedChatId === number && isMounted) {
+        getMessages(number).then(setChatMessages);
+      }
     });
-    return unsubscribe;
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+      // 4. Close connection when leaving screen
+      closeChatDatabase(number).then(() => console.log(`DB connection closed for ${number}`));
+    };
   }, [number]);
 
   const handleSendMessage = async (msg: string) => {

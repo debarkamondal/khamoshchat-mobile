@@ -1,11 +1,12 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import StyledText from '@/src/components/StyledText';
 import { useThemedStyles } from '@/src/hooks/useTheme';
-import { ChatMessage } from '@/src/utils/chat';
+import { Message } from '@/src/utils/db';
+import { formatMessageTime } from '@/src/utils/chat';
 
 type ChatBubbleProps = {
-    message: ChatMessage;
+    message: Message;
 };
 
 const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
@@ -35,15 +36,30 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
         messageTextReceived: {
             color: colors.textPrimary,
             fontSize: 16,
+        },
+        timestampSent: {
+            color: 'rgba(255, 255, 255, 0.7)',
+            fontSize: 10,
+            alignSelf: 'flex-end',
+            marginTop: 4,
+        },
+        timestampReceived: {
+            color: colors.textSecondary,
+            fontSize: 10,
+            alignSelf: 'flex-end',
+            marginTop: 4,
         }
     }));
 
-    const isMe = message.sender === 'me';
+    const isMe = message.sender_id === 'me' || message.sender_id === 'self'; // Handling 'me' or potential future uses
 
     return (
         <View style={isMe ? themedStyles.sentBubble : themedStyles.receivedBubble}>
             <StyledText style={isMe ? themedStyles.messageTextSent : themedStyles.messageTextReceived}>
-                {message.text}
+                {message.content}
+            </StyledText>
+            <StyledText style={isMe ? themedStyles.timestampSent : themedStyles.timestampReceived}>
+                {formatMessageTime(message.created_at)}
             </StyledText>
         </View>
     );
