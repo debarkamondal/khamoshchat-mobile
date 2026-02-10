@@ -8,6 +8,7 @@ node_modules/
 modules/libsignal-dezire/android/build
 modules/libsignal-dezire/android/src/main/jniLibs
 modules/libsignal-dezire/ios/rust/liblibsignal_dezire.a
+modules/libsignal-dezire/ios/rust/libsignal-dezire.h
 
 # Expo
 .expo/
