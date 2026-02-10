@@ -1,7 +1,7 @@
 import * as SplashScreen from "expo-splash-screen";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
-import useSession from "./../store/session";
+import useSession from "./../store/useSession";
 import { Platform } from "react-native";
 import { ThemeProvider, useTheme } from "@/src/hooks/useTheme";
 import { isLiquidGlassAvailable } from "expo-glass-effect";

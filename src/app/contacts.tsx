@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import StyledTextInput from "../components/StyledTextInput";
 import Card from "../components/Card";
-import { getContacts, SplitContact } from "../hooks/getContacts";
+import { getContacts, SplitContact } from "@/src/utils/helpers/contacts";
 import { Link, router } from "expo-router";
 
 export default function Contacts() {

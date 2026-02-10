@@ -1,5 +1,5 @@
 import { KeyPair } from "@/modules/libsignal-dezire";
-import useSession from "@/src/store/session";
+import useSession from "@/src/store/useSession";
 import * as Crypto from "expo-crypto";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 import StyledButton from "@/src/components/StyledButton";

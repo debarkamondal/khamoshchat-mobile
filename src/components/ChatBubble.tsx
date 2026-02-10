@@ -2,8 +2,8 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import StyledText from '@/src/components/StyledText';
 import { useThemedStyles } from '@/src/hooks/useTheme';
-import { Message } from '@/src/utils/db';
-import { formatMessageTime } from '@/src/utils/chat';
+import { Message } from '@/src/utils/storage';
+import { formatMessageTime } from '@/src/utils/helpers';
 
 type ChatBubbleProps = {
     message: Message;

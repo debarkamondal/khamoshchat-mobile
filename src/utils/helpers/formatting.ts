@@ -1,6 +1,5 @@
 /**
- * Utility functions for Chat operations.
- * Separates logic from database handling.
+ * Formatting and validation utilities for chat operations.
  */
 
 import { v4 as uuidv4 } from 'uuid';
@@ -20,7 +19,7 @@ export function formatMessageTime(timestamp: number): string {
 }
 
 /**
- * Validates message content (e.g., separate encryption validation logic could go here later).
+ * Validates message content.
  */
 export function validateMessage(content: string): boolean {
     return content.trim().length > 0;

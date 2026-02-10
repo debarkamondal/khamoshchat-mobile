@@ -1,11 +1,11 @@
 import { SafeAreaView } from "react-native-safe-area-context";
 import StyledText from "../../components/StyledText";
 import { useTheme } from "@/src/hooks/useTheme";
-import useSession from "@/src/store/session";
+import useSession from "@/src/store/useSession";
 import StyledButton from "@/src/components/StyledButton";
 import OtpInput from "@/src/components/OtpInput";
 import { StyleSheet } from "react-native";
-import { genOpks } from "@/src/utils/opks";
+import { generateOpks } from "@/src/utils/crypto";
 import { router } from "expo-router";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 
@@ -28,7 +28,7 @@ export default function otp() {
     console.log("sign:", temp)
     const b64Sign = btoa(String.fromCharCode(...signature));
     const b64PreKey = btoa(String.fromCharCode(...pubPreKey));
-    const b64Opks = await genOpks();
+    const b64Opks = await generateOpks();
     const body = {
       phone: phone.countryCode + phone.number,
       sign: b64Sign,

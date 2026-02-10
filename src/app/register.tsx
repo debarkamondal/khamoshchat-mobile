@@ -8,7 +8,7 @@ import { useTheme } from "@/src/hooks/useTheme";
 import StyledText from "@/src/components/StyledText";
 import { useMemo, useState } from "react";
 import "./../polyfills/crypto";
-import useSession from "@/src/store/session";
+import useSession from "@/src/store/useSession";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 
 export default function register() {

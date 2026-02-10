@@ -7,15 +7,15 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import * as Contacts from "expo-contacts";
 import { View, StyleSheet, Alert, FlatList } from "react-native";
-import { sendInitialMessage, sendMessage } from '@/src/utils/messages';
-import { getChatDatabase, closeChatDatabase, getMessages, subscribeToMessages, Message } from "@/src/utils/db";
+import { sendInitialMessage, sendMessage } from '@/src/utils/messaging';
+import { openChatDatabase, closeChatDatabase, getMessages, subscribeToMessages, Message } from '@/src/utils/storage';
 import ChatBubble from "@/src/components/ChatBubble";
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import useSession from "@/src/store/session";
-import useMqttStore from "@/src/store/mqtt";
+import useSession from "@/src/store/useSession";
+import useMqttStore from "@/src/store/useMqttStore";
 import {
   initSender,
   encryptMessage,
@@ -23,7 +23,7 @@ import {
   getIdentityKey,
   loadRatchetSession,
   clearSession
-} from "@/src/utils/ratchet";
+} from "@/src/utils/crypto";
 
 
 export default function Chat() {
@@ -43,7 +43,7 @@ export default function Chat() {
     const initChat = async () => {
       try {
         // 1. Open Connection & Keep it open while screen is active
-        await getChatDatabase(number);
+        await openChatDatabase(number);
         if (!isMounted) return;
         console.log(`DB connection kept open for ${number}`);
 

@@ -1,11 +1,11 @@
 import mqtt, { MqttClient } from "mqtt";
 import { useEffect } from "react";
 import { Alert } from "react-native";
-import useMqttStore from "@/src/store/mqtt";
-import useSession from "@/src/store/session";
-import { X3DHBundle } from "@/src/utils/x3dh";
-import { receiveInitialMessage, receiveMessage } from "@/src/utils/messages";
-import { initReceiver, decryptMessage, getIdentityKey } from "@/src/utils/ratchet";
+import useMqttStore from "@/src/store/useMqttStore";
+import useSession from "@/src/store/useSession";
+import { X3DHBundle } from "@/src/utils/crypto";
+import { receiveInitialMessage, receiveMessage } from "@/src/utils/messaging";
+import { initReceiver, decryptMessage, getIdentityKey } from "@/src/utils/crypto";
 import { Buffer } from "buffer";
 
 const useMqtt = (topic: string) => {
