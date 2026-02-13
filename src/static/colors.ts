@@ -30,7 +30,10 @@ export const requiredColors = {
   },
   textSecondary: {
     ios: "secondaryLabel",
-    android: "?attr/textColorSecondary",
+    android: {
+      light: "@android:color/system_neutral1_700",
+      dark: "@android:color/system_neutral1_300",
+    },
     fallback: {
       light: "#5A5A5A",
       dark: "#C7C7C7",
@@ -38,7 +41,10 @@ export const requiredColors = {
   },
   textTertiary: {
     ios: "tertiaryLabel",
-    android: "?attr/textColorHint",
+    android: {
+      light: "@android:color/system_neutral1_500",
+      dark: "@android:color/system_neutral1_500",
+    },
     fallback: {
       light: "#8E8E93",
       dark: "#6E6E73",
@@ -49,7 +55,7 @@ export const requiredColors = {
   backgroundPrimary: {
     ios: "systemBackground",
     android: {
-      light: "@android:color/system_neutral1_100",
+      light: "@android:color/system_neutral1_50",
       dark: "@android:color/system_neutral1_900",
     },
     fallback: {
@@ -67,7 +73,10 @@ export const requiredColors = {
   },
   backgroundTertiary: {
     ios: "tertiarySystemBackground",
-    android: "@android:color/system_neutral2_50",
+    android: {
+      light: "@android:color/system_neutral2_50",
+      dark: "@android:color/system_neutral2_800",
+    },
     fallback: {
       light: "#FFFFFF",
       dark: "#2C2C2E",
@@ -77,46 +86,63 @@ export const requiredColors = {
   // Borders / Dividers
   border: {
     ios: "separator",
-    android: "@android:color/system_neutral1_300",
+    android: {
+      light: "@android:color/system_neutral1_300",
+      dark: "@android:color/system_neutral1_700",
+    },
     fallback: {
       light: "#E0E0E0",
       dark: "#3A3A3C",
     },
   },
 
-  // Accent / Brand colors
-  accentPrimary: {
+  // ── Brand accent (fixed yellow/orange — app identity) ──
+  brandAccent: {
     ios: "systemOrange",
-    android: "@android:color/holo_orange_light",
+    android: {
+      light: "#FF9500",
+      dark: "#FF9F0A",
+    },
     fallback: {
-      light: "#FFA500",
-      dark: "#FF8C00",
+      light: "#FF9500",
+      dark: "#FF9F0A",
     },
   },
-  accentPrimaryDark: {
+  brandAccentDark: {
     ios: "systemOrange",
-    android: "@android:color/holo_orange_dark",
+    android: {
+      light: "#C77400",
+      dark: "#D48600",
+    },
     fallback: {
-      light: "#E69500",
-      dark: "#CC7A00",
+      light: "#C77400",
+      dark: "#D48600",
     },
   },
-  // accentSecondary: {
-  //   ios: "systemBlue",
-  //   android: "@android:color/holo_blue_light",
-  //   fallback: {
-  //     light: "#007AFF",
-  //     dark: "#0A84FF",
-  //   },
-  // },
-  // accentTertiary: {
-  //   ios: "systemGreen",
-  //   android: "@android:color/holo_green_light",
-  //   fallback: {
-  //     light: "#34C759",
-  //     dark: "#30D158",
-  //   },
-  // },
+
+  // ── System accent (Material You — follows device wallpaper) ──
+  systemAccent: {
+    ios: "systemOrange",
+    android: {
+      light: "@android:color/system_accent1_400",
+      dark: "@android:color/system_accent1_600",
+    },
+    fallback: {
+      light: "#007AFF",
+      dark: "#0A84FF",
+    },
+  },
+  accentBackground: {
+    ios: "systemFill", // Standard dynamic fill color
+    android: {
+      light: "@android:color/system_accent2_400",
+      dark: "@android:color/system_accent2_600",
+    },
+    fallback: {
+      light: "#E8E0F0",
+      dark: "#2A2040",
+    },
+  },
 
   // Semantic states
   success: {
@@ -129,7 +155,10 @@ export const requiredColors = {
   },
   warning: {
     ios: "systemYellow",
-    android: "@android:color/holo_orange_dark",
+    android: {
+      light: "#FFD60A",
+      dark: "#FFD60A",
+    },
     fallback: {
       light: "#FFD60A",
       dark: "#FFD60A",
@@ -163,7 +192,10 @@ export const requiredColors = {
   },
   overlay: {
     ios: "systemGray5",
-    android: "@android:color/system_neutral2_100",
+    android: {
+      light: "@android:color/system_neutral2_100",
+      dark: "@android:color/system_neutral2_800",
+    },
     fallback: {
       light: "rgba(0,0,0,0.1)",
       dark: "rgba(255,255,255,0.1)",
@@ -171,10 +203,37 @@ export const requiredColors = {
   },
   shadow: {
     ios: "systemGray4",
-    android: "@android:color/system_neutral1_500",
+    android: {
+      light: "@android:color/system_neutral1_500",
+      dark: "@android:color/system_neutral1_900",
+    },
     fallback: {
       light: "rgba(0,0,0,0.25)",
       dark: "rgba(0,0,0,0.5)",
     },
   },
-};
+
+  // Tab bar (brand-tinted)
+  tabBarBackground: {
+    ios: "systemOrange",
+    android: {
+      light: "@android:color/system_accent1_600",
+      dark: "@android:color/system_accent1_900",
+    },
+    fallback: {
+      light: "#007AFF",
+      dark: "#0A84FF",
+    },
+  },
+  tabBarIndicator: {
+    ios: "systemOrange",
+    android: {
+      light: "#FF9500",
+      dark: "#FF9F0A",
+    },
+    fallback: {
+      light: "#FF9500",
+      dark: "#FF9F0A",
+    },
+  },
+} satisfies Record<string, ColorDefinition>;

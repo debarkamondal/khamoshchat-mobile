@@ -4,9 +4,9 @@ import StyledTextInput from "@/src/components/StyledTextInput";
 import { useTheme, useThemedStyles } from "@/src/hooks/useTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Contacts from "expo-contacts";
-import { View, StyleSheet, Alert, FlatList } from "react-native";
+import { View, StyleSheet, Alert, FlatList, NativeScrollEvent, NativeSyntheticEvent, Pressable } from "react-native";
 import { sendInitialMessage, sendMessage } from '@/src/utils/messaging';
 import { openChatDatabase, closeChatDatabase, getMessages, subscribeToMessages, Message } from '@/src/utils/storage';
 import ChatBubble from "@/src/components/ChatBubble";
@@ -32,6 +32,19 @@ export default function Chat() {
   const { number, id }: { number: string; id: string } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const flatListRef = useRef<FlatList<Message>>(null);
+
+  // Track scroll position — in inverted list, offset 0 = bottom (latest messages)
+  const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset } = event.nativeEvent;
+    // In inverted list, scrolling "up" (to older messages) increases offset
+    setShowScrollButton(contentOffset.y > 150);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
 
   const { colors } = useTheme();
   const session = useSession();
@@ -116,6 +129,8 @@ export default function Chat() {
       });
     }
     setMessage("");
+    // Inverted list auto-shows new items at bottom, just ensure we're scrolled there
+    scrollToBottom();
   };
 
   useEffect(() => {
@@ -139,6 +154,23 @@ export default function Chat() {
       flex: 1,
       paddingHorizontal: 16,
     },
+    scrollToBottomButton: {
+      position: 'absolute',
+      right: 16,
+      bottom: 80,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      borderCurve: 'continuous',
+      backgroundColor: colors.backgroundSecondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 4,
+    },
   }));
 
   // Insets-dependent styles (memoized by insets)
@@ -151,7 +183,7 @@ export default function Chat() {
       <View style={styles.header}>
         <StyledButton onPress={() => router.back()} variant="link">
           <Ionicons
-            color={colors.accentPrimary}
+            color={colors.brandAccent}
             name="chevron-back"
             size={24}
           />
@@ -163,14 +195,27 @@ export default function Chat() {
       </View>
 
       <FlatList
+        ref={flatListRef}
         style={themedStyles.messageContainer}
-        data={chatMessages}
+        data={[...chatMessages].reverse()}
+        inverted
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <ChatBubble message={item} />
         )}
-        contentContainerStyle={{ paddingBottom: 100 }} // Space for input bar
+        contentContainerStyle={{ paddingTop: 100 }} // Space for input bar (top in inverted = bottom visually)
+        onScroll={onScroll}
+        scrollEventThrottle={100}
       />
+
+      {showScrollButton && (
+        <Pressable
+          style={themedStyles.scrollToBottomButton}
+          onPress={scrollToBottom}
+        >
+          <Ionicons name="chevron-down" size={24} color={colors.textPrimary} />
+        </Pressable>
+      )}
 
       <View
         style={StyleSheet.flatten([
@@ -184,6 +229,7 @@ export default function Chat() {
           placeholder={"Send message"}
           value={message}
           onChangeText={setMessage}
+          multiline
         />
         <StyledButton
           onPress={() => handleSendMessage(message)}
@@ -222,13 +268,16 @@ const styles = StyleSheet.create({
     flex: 0,
     position: "absolute",
     bottom: 0,
+    width: '100%', // Constrain width to prevent horizontal overflow
     alignItems: "center",
     flexDirection: "row",
   },
   messageInput: {
     borderRadius: 25,
     padding: 12,
-    flexGrow: 1,
+    flex: 1, // Ensure shrinking when content overflows
     margin: 4,
+    maxHeight: 120, // Prevent infinite growth
+    alignSelf: 'center', // Keep centered vertically within input bar
   },
 });

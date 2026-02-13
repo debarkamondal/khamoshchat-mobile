@@ -67,7 +67,7 @@ export default function register() {
         helpLink: {
           position: "absolute",
           bottom: 48,
-          color: colors.accentPrimary,
+          color: colors.brandAccent,
         },
         heading: {
           fontSize: 24,

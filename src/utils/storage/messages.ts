@@ -5,6 +5,7 @@
 
 import { openChatDatabase, closeChatDatabase, isDatabaseOpen } from './database';
 import { generateMessageId } from '../helpers/formatting';
+import { upsertChatThread } from './chatList';
 
 /**
  * Message type definition.
@@ -85,6 +86,9 @@ export async function saveMessage(
             created_at,
             'sent'
         );
+
+        // Update chat list in primary DB
+        await upsertChatThread(chatId, message.content);
 
         notifyListeners(chatId);
     } catch (error) {

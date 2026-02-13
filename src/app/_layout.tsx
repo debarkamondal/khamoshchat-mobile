@@ -6,6 +6,7 @@ import { Platform } from "react-native";
 import { ThemeProvider, useTheme } from "@/src/hooks/useTheme";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import useMqtt from "@/src/hooks/useMqtt";
+import { openPrimaryDatabase } from "@/src/utils/storage";
 
 // Set the animation options. This is optional.
 SplashScreen.setOptions({
@@ -37,6 +38,15 @@ function InnerLayout({ isRegistered }: { isRegistered: boolean }) {
 
   // Consolidated hook handles connection + store sync + message listening
   useMqtt(isRegistered ? topic : "");
+
+  // Open primary database for chat list
+  useEffect(() => {
+    if (isRegistered) {
+      openPrimaryDatabase().catch(e =>
+        console.warn('Failed to open primary database', e)
+      );
+    }
+  }, [isRegistered]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

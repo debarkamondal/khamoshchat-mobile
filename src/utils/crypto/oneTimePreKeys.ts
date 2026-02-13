@@ -4,7 +4,7 @@
  */
 
 import LibsignalDezireModule from '@/modules/libsignal-dezire/src/LibsignalDezireModule';
-import { getItemAsync, setItemAsync } from 'expo-secure-store';
+import { getItemAsync, setItemAsync, AFTER_FIRST_UNLOCK } from 'expo-secure-store';
 import { toBase64, fromBase64 } from '../helpers/encoding';
 
 /**
@@ -17,7 +17,9 @@ export async function generateOpks(count: number = 25): Promise<string[]> {
     for (let i = 0; i < count; i++) {
         const keyPair = await LibsignalDezireModule.genKeyPair();
         opksPub.push(toBase64(keyPair.public));
-        await setItemAsync(`opks-${i}`, toBase64(keyPair.secret));
+        await setItemAsync(`opks-${i}`, toBase64(keyPair.secret), {
+            keychainAccessible: AFTER_FIRST_UNLOCK,
+        });
     }
 
     return opksPub;

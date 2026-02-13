@@ -31,10 +31,10 @@ const StyledButton = ({
       justifyContent: "center",
     },
     default: {
-      backgroundColor: colors.accentPrimary,
+      backgroundColor: colors.brandAccent,
     },
     pressedDefault: {
-      backgroundColor: colors.accentPrimaryDark ?? colors.accentPrimary,
+      backgroundColor: colors.brandAccentDark ?? colors.brandAccent,
       opacity: 0.9,
       transform: [{ scale: 0.97 }],
     },

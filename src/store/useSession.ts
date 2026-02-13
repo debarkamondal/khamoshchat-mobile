@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { setItem, getItem, deleteItemAsync } from "expo-secure-store";
+import { setItemAsync, getItemAsync, deleteItemAsync, AFTER_FIRST_UNLOCK } from "expo-secure-store";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { Alert } from "react-native";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
@@ -99,8 +99,9 @@ const useSession = create(
     {
       name: "session",
       storage: createJSONStorage(() => ({
-        setItem,
-        getItem,
+        setItem: (key: string, value: string) =>
+          setItemAsync(key, value, { keychainAccessible: AFTER_FIRST_UNLOCK }),
+        getItem: (key: string) => getItemAsync(key),
         removeItem: deleteItemAsync,
       })),
       merge: (persistedState, currentState) => {

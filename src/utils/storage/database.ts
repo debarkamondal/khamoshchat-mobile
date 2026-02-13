@@ -5,7 +5,7 @@
 
 import * as SQLite from 'expo-sqlite';
 import { Paths } from 'expo-file-system';
-import { getOrGenerateDatabaseKey, sanitizeChatId } from './keys';
+import { getOrCreateDatabaseCredentials } from './keys';
 
 /**
  * Active database connections pool.
@@ -21,14 +21,11 @@ export async function openChatDatabase(chatId: string): Promise<SQLite.SQLiteDat
         return activeDatabases.get(chatId)!;
     }
 
-    // Retrieve encryption key
-    const key = await getOrGenerateDatabaseKey(chatId);
+    // Retrieve encryption key and UUID-based database ID
+    const { key, dbId } = await getOrCreateDatabaseCredentials(chatId);
 
-    // Generate safe filename
-    const safeChatId = sanitizeChatId(chatId);
-    const dbName = `${Paths.document.uri}/chat_${safeChatId}.db`;
-
-    const db = await SQLite.openDatabaseAsync(dbName);
+    // Use UUID as filename to obfuscate user info
+    const db = await SQLite.openDatabaseAsync(`${dbId}.db`, {}, Paths.document.uri);
 
     // Apply Encryption
     await db.execAsync(`PRAGMA key = '${key}';`);
@@ -96,7 +93,6 @@ async function migrateDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
     }
 
     if (currentVersion < 2) {
-        // Add sessions table for ratchet state storage (no size limit unlike SecureStore)
         await db.execAsync(`
             CREATE TABLE IF NOT EXISTS sessions (
                 key TEXT PRIMARY KEY NOT NULL,

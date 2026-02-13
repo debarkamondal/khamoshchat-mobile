@@ -110,7 +110,7 @@ export default function OtpInput({
       width: 44,
       height: 52,
       borderWidth: 1,
-      borderColor: colors.accentPrimary,
+      borderColor: colors.brandAccent,
       borderRadius: 6,
       textAlign: "center",
       color: colors.textPrimary,

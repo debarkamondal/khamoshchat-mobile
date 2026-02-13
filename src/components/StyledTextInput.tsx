@@ -13,14 +13,14 @@ const StyledTextInput = ({ style: styles, ...restProps }: TextInputProps) => {
       borderColor: colors.border,
     },
     textInputActive: {
-      borderColor: colors.accentPrimary,
+      borderColor: colors.brandAccent,
     },
   }));
   return (
     <Input
       style={StyleSheet.flatten([
         defaultStyles.textInputDefault,
-        isInFocus ? defaultStyles.textInputActive : "",
+        isInFocus ? defaultStyles.textInputActive : undefined,
         styles,
       ])}
       onFocus={() => setIsInFocus(true)}

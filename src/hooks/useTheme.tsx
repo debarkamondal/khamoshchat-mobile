@@ -44,11 +44,15 @@ function computeColors(scheme: "light" | "dark" | null): ComputedColors {
     if (platform === "ios") {
       colorObj[color] = PlatformColor(colorDef.ios);
     } else if (platform === "android") {
-      colorObj[color] = PlatformColor(
+      const androidColor =
         typeof colorDef.android === "string"
           ? colorDef.android
-          : colorDef.android[scheme === "light" ? "light" : "dark"]
-      );
+          : colorDef.android[scheme === "light" ? "light" : "dark"];
+      // Raw hex/rgba strings are used directly; resource refs go through PlatformColor
+      colorObj[color] =
+        androidColor.startsWith("#") || androidColor.startsWith("rgb")
+          ? androidColor
+          : PlatformColor(androidColor);
     } else {
       colorObj[color] = colorDef.fallback[scheme ?? "light"];
     }

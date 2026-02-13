@@ -1,10 +1,12 @@
 /**
- * Encryption key management for database encryption.
- * Handles secure generation and storage of database encryption keys.
+ * Encryption key and database identity management.
+ * Handles secure generation and storage of database encryption keys
+ * and UUID-based database identifiers.
  */
 
 import * as SecureStore from 'expo-secure-store';
 import { getRandomValues } from 'expo-crypto';
+import { v4 as uuidv4 } from 'uuid';
 
 // Polyfill for random values if not locally available
 if (typeof global.crypto !== 'object') {
@@ -22,24 +24,41 @@ export function sanitizeChatId(chatId: string): string {
 }
 
 /**
- * Retrieves or generates a secure 32-byte hex key for a specific chat.
- * Keys are stored in SecureStore.
+ * Database credentials stored per chat.
  */
-export async function getOrGenerateDatabaseKey(chatId: string): Promise<string> {
+type DatabaseCredentials = {
+    key: string;    // 32-byte hex encryption key
+    dbId: string;   // UUID used as the database filename
+};
+
+/**
+ * Retrieves or generates database credentials (encryption key + UUID) for a chat.
+ * Both are stored together in SecureStore.
+ */
+export async function getOrCreateDatabaseCredentials(chatId: string): Promise<DatabaseCredentials> {
     const safeChatId = sanitizeChatId(chatId);
-    const keyAlias = `chat_key_${safeChatId}`;
-    let key = await SecureStore.getItemAsync(keyAlias);
+    const alias = `chat_creds_${safeChatId}`;
+    const stored = await SecureStore.getItemAsync(alias);
 
-    if (!key) {
-        // Generate a 32-byte key (256-bit) for SQLCipher
-        const randomBytes = new Uint8Array(32);
-        getRandomValues(randomBytes);
-        // Convert to hex string
-        key = Array.from(randomBytes)
-            .map((b) => b.toString(16).padStart(2, '0'))
-            .join('');
-
-        await SecureStore.setItemAsync(keyAlias, key);
+    if (stored) {
+        return JSON.parse(stored) as DatabaseCredentials;
     }
-    return key;
+
+    // Generate a 32-byte key (256-bit) for SQLCipher
+    const randomBytes = new Uint8Array(32);
+    getRandomValues(randomBytes);
+    const key = Array.from(randomBytes)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+
+    // Generate a UUID for the database filename
+    const dbId = uuidv4();
+
+    const credentials: DatabaseCredentials = { key, dbId };
+    await SecureStore.setItemAsync(alias, JSON.stringify(credentials), {
+        keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+    });
+
+    return credentials;
 }
+

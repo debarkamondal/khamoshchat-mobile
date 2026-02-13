@@ -58,7 +58,7 @@ export default function otp() {
       color: colors.textPrimary,
     },
     linkText: {
-      color: colors.accentPrimary,
+      color: colors.brandAccent,
       textDecorationLine: "underline",
       fontSize: 14,
     },
