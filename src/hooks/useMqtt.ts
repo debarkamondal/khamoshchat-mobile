@@ -19,9 +19,11 @@ const useMqtt = (topic: string) => {
 
         try {
             // Using wss and port 8084
-            mqttClient = mqtt.connect("wss://broker.emqx.io/mqtt", {
-                port: 8084,
+            mqttClient = mqtt.connect("wss://mqtt.dkmondal.in/mqtt", {
+                port: 8443,
                 protocol: "wss",
+                username: "dezire",
+                password: "test1234",
                 protocolVersion: 5,
                 connectTimeout: 5000,
                 clientId: `khamosh_chat_${Math.random().toString(16).slice(2, 8)}`, // Unique client ID
@@ -43,6 +45,18 @@ const useMqtt = (topic: string) => {
                         );
                     }
                 });
+            });
+
+            mqttClient.on("reconnect", () => {
+                console.log("MQTT Client reconnecting...");
+            });
+
+            mqttClient.on("close", () => {
+                console.log("MQTT Client closed.");
+            });
+
+            mqttClient.on("offline", () => {
+                console.log("MQTT Client offline.");
             });
 
             // 2. Handle Errors

@@ -29,10 +29,9 @@ import {
 export default function Chat() {
   const [name, setName] = useState<string>();
   const [message, setMessage] = useState<string>("");
-  const { number, id }: { number: string; id: string } = useLocalSearchParams();
-  const insets = useSafeAreaInsets();
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [showScrollButton, setShowScrollButton] = useState(false);
+
   const flatListRef = useRef<FlatList<Message>>(null);
 
   // Track scroll position — in inverted list, offset 0 = bottom (latest messages)
@@ -46,6 +45,8 @@ export default function Chat() {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   }, []);
 
+  const { number, id }: { number: string; id: string } = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const session = useSession();
   const { client } = useMqttStore();
