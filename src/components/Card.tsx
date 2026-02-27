@@ -15,7 +15,7 @@ export default function Card({
       marginVertical: 4,
       padding: 4,
       borderRadius: 8,
-      backgroundColor: colors.card,
+      backgroundColor: colors.surface,
     },
   }));
   return (

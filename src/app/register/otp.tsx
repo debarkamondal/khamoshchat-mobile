@@ -54,11 +54,11 @@ export default function Otp() {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: colors.backgroundPrimary,
-      color: colors.textPrimary,
+      backgroundColor: colors.background,
+      color: colors.onBackground,
     },
     linkText: {
-      color: colors.brandAccent,
+      color: colors.primary,
       textDecorationLine: "underline",
       fontSize: 14,
     },
@@ -81,7 +81,7 @@ export default function Otp() {
         <StyledText style={dynamicStyles.linkText}>Resend OTP</StyledText>
       </StyledButton>
       <StyledButton>
-        <StyledText style={{ color: colors.onBrandAccent }}>Continue</StyledText>
+        <StyledText>Continue</StyledText>
       </StyledButton>
     </SafeAreaView>
   );

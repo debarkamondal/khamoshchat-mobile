@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo } from "react";
 import { StyleSheet, useColorScheme } from "react-native";
-import { colors, ThemeColors } from "@/src/static/colors";
+import { getColors, ThemeColors } from "@/src/static/colors";
 
 // Define types for the Theme Context
 interface ThemeContextType {
@@ -13,9 +13,12 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   // useColorScheme from react-native returns 'light', 'dark', 'unspecified', or null
   // Calling this here triggers a re-render when the system theme changes
-  // which is required for Color.android.dynamic.* to update correctly
   const rawScheme = useColorScheme();
   const scheme = rawScheme === 'light' || rawScheme === 'dark' ? rawScheme : 'light';
+
+  // Force a new object reference on every render to ensure Android dynamic colors
+  // are re-evaluated when the scheme changes.
+  const colors = useMemo(() => getColors(scheme), [scheme]);
 
   return (
     <ThemeContext.Provider value={{ colors, scheme }}>
@@ -40,16 +43,18 @@ export type { ThemeColors };
  *
  * @example
  * const styles = useThemedStyles((colors) => ({
- *   container: { backgroundColor: colors.backgroundPrimary },
- *   text: { color: colors.textPrimary },
+ *   container: { backgroundColor: colors.background },
+ *   text: { color: colors.onBackground },
  * }));
  */
 export function useThemedStyles<T extends StyleSheet.NamedStyles<T>>(
   styleFactory: (colors: ThemeColors) => T
 ): T {
-  const { colors } = useTheme();
+  const { colors, scheme } = useTheme();
   return useMemo(
     () => StyleSheet.create(styleFactory(colors)),
-    [colors, styleFactory]
+    // `colors` is now a fresh object when the scheme changes,
+    // so styles will recompute with the correct dynamic color values.
+    [colors, scheme, styleFactory]
   );
 }

@@ -13,7 +13,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
     const themedStyles = useThemedStyles((colors) => ({
         sentBubble: {
             alignSelf: 'flex-end',
-            backgroundColor: colors.systemAccent,
+            backgroundColor: colors.primary,
             borderRadius: 20,
             borderCurve: 'continuous',
             borderBottomRightRadius: 4,
@@ -30,7 +30,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
         receivedBubble: {
             alignSelf: 'flex-start',
             position: 'relative',
-            backgroundColor: colors.backgroundSecondary,
+            backgroundColor: colors.surface,
             borderRadius: 20,
             borderCurve: 'continuous',
             borderBottomLeftRadius: 4,
@@ -51,18 +51,18 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
             flexShrink: 1,
         },
         messageTextReceived: {
-            color: colors.textPrimary,
+            color: colors.onBackground,
             fontSize: 16,
             lineHeight: 22,
             flexShrink: 1,
         },
         timestampSent: {
-            color: colors.textSecondary,
+            color: colors.onSurfaceVariant,
             fontSize: 10,
             marginBottom: 2, // Align with baseline of text roughly
         },
         timestampReceived: {
-            color: colors.textSecondary,
+            color: colors.onSurfaceVariant,
             fontSize: 10,
             marginBottom: 2,
             marginLeft: 'auto', // Push to right if wrapped, but don't force growth
