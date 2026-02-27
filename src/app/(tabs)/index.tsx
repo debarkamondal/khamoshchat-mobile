@@ -202,7 +202,7 @@ export default function Index() {
         style={contactButtonStyle}
         onPress={() => router.push("/contacts")}
       >
-        <StyledText>
+        <StyledText style={{ color: colors.onBrandAccent }}>
           <MaterialCommunityIcons name="contacts" size={28} />
         </StyledText>
       </StyledButton>

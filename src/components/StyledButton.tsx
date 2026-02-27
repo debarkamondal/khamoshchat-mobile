@@ -6,7 +6,7 @@ import {
   ViewStyle,
   TextStyle,
 } from "react-native";
-import { useTheme, useThemedStyles } from "@/src/hooks/useTheme";
+import { useThemedStyles } from "@/src/hooks/useTheme";
 
 interface StyledButtonProps extends TouchableOpacityProps {
   variant?: "default" | "link";
@@ -20,7 +20,6 @@ const StyledButton = ({
   children,
   ...restProps
 }: StyledButtonProps) => {
-  const { colors } = useTheme();
 
   const styles = useThemedStyles((colors) => ({
     base: {

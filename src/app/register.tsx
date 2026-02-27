@@ -11,7 +11,7 @@ import "./../polyfills/crypto";
 import useSession from "@/src/store/useSession";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 
-export default function register() {
+export default function Register() {
   const { colors } = useTheme();
   const [phone, setPhone] = useState<string>();
   const [countryCode, setCountryCode] = useState<string>("+91");
@@ -108,11 +108,11 @@ export default function register() {
         />
       </View>
       <StyledButton style={styles.button} onPress={confirmationAlert}>
-        <StyledText>Continue</StyledText>
+        <StyledText style={{ color: colors.onBrandAccent }}>Continue</StyledText>
         <Feather
           size={16}
           style={{ marginTop: 2 }}
-          color={colors.textPrimary}
+          color={colors.onBrandAccent as string}
           name="arrow-right"
         />
       </StyledButton>

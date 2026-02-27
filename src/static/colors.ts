@@ -1,239 +1,129 @@
+import { Color } from "expo-router";
+import { Platform } from "react-native";
 
-// Definition for a single color entry
-export type ColorDefinition = {
-  ios: string;
-  android:
-  | {
-    dark: string;
-    light: string;
-  }
-  | string;
-  fallback: {
-    light: string;
-    dark: string;
-  };
-};
-
-// Generic type for color groups
-export type ColorGroup = Record<string, ColorDefinition>;
-
-// Expanded color definitions
-export const requiredColors = {
+export const colors = {
   // Text colors
-  textPrimary: {
-    ios: "label",
-    android: "?attr/colorForeground",
-    fallback: {
-      light: "#000000",
-      dark: "#FFFFFF",
-    },
-  },
-  textSecondary: {
-    ios: "secondaryLabel",
-    android: {
-      light: "@android:color/system_neutral1_700",
-      dark: "@android:color/system_neutral1_300",
-    },
-    fallback: {
-      light: "#5A5A5A",
-      dark: "#C7C7C7",
-    },
-  },
-  textTertiary: {
-    ios: "tertiaryLabel",
-    android: {
-      light: "@android:color/system_neutral1_500",
-      dark: "@android:color/system_neutral1_500",
-    },
-    fallback: {
-      light: "#8E8E93",
-      dark: "#6E6E73",
-    },
-  },
+  textPrimary: Platform.select({
+    ios: Color.ios.label,
+    android: Color.android.dynamic.onSurface,
+    default: "#000000",
+  }),
+  textSecondary: Platform.select({
+    ios: Color.ios.secondaryLabel,
+    android: Color.android.dynamic.onSurfaceVariant,
+    default: "#5A5A5A",
+  }),
+  textTertiary: Platform.select({
+    ios: Color.ios.tertiaryLabel,
+    android: Color.android.dynamic.outline,
+    default: "#8E8E93",
+  }),
 
   // Backgrounds
-  backgroundPrimary: {
-    ios: "systemBackground",
-    android: {
-      light: "@android:color/system_neutral1_50",
-      dark: "@android:color/system_neutral1_900",
-    },
-    fallback: {
-      light: "#FFFFFF",
-      dark: "#000000",
-    },
-  },
-  backgroundSecondary: {
-    ios: "secondarySystemBackground",
-    android: "?attr/colorBackgroundFloating",
-    fallback: {
-      light: "#F2F2F7",
-      dark: "#1C1C1E",
-    },
-  },
-  backgroundTertiary: {
-    ios: "tertiarySystemBackground",
-    android: {
-      light: "@android:color/system_neutral2_50",
-      dark: "@android:color/system_neutral2_800",
-    },
-    fallback: {
-      light: "#FFFFFF",
-      dark: "#2C2C2E",
-    },
-  },
+  backgroundPrimary: Platform.select({
+    ios: Color.ios.systemBackground,
+    android: Color.android.dynamic.surface,
+    default: "#FFFFFF",
+  }),
+  backgroundSecondary: Platform.select({
+    ios: Color.ios.secondarySystemBackground,
+    android: Color.android.dynamic.surfaceVariant,
+    default: "#F2F2F7",
+  }),
+  backgroundTertiary: Platform.select({
+    ios: Color.ios.tertiarySystemBackground,
+    android: Color.android.dynamic.surfaceContainerHigh,
+    default: "#FFFFFF",
+  }),
 
   // Borders / Dividers
-  border: {
-    ios: "separator",
-    android: {
-      light: "@android:color/system_neutral1_300",
-      dark: "@android:color/system_neutral1_700",
-    },
-    fallback: {
-      light: "#E0E0E0",
-      dark: "#3A3A3C",
-    },
-  },
+  border: Platform.select({
+    ios: Color.ios.separator,
+    android: Color.android.dynamic.outlineVariant,
+    default: "#E0E0E0",
+  }),
 
-  // ── Brand accent (fixed yellow/orange — app identity) ──
-  brandAccent: {
-    ios: "systemOrange",
-    android: {
-      light: "#FF9500",
-      dark: "#FF9F0A",
-    },
-    fallback: {
-      light: "#FF9500",
-      dark: "#FF9F0A",
-    },
-  },
-  brandAccentDark: {
-    ios: "systemOrange",
-    android: {
-      light: "#C77400",
-      dark: "#D48600",
-    },
-    fallback: {
-      light: "#C77400",
-      dark: "#D48600",
-    },
-  },
+  // Brand accent
+  brandAccent: Platform.select({
+    ios: Color.ios.systemOrange,
+    android: Color.android.dynamic.primary,
+    default: "#FF9500",
+  }),
+  brandAccentDark: Platform.select({
+    ios: Color.ios.systemOrange,
+    android: Color.android.dynamic.primary, // Android dynamic colors handle dark mode automatically
+    default: "#C77400",
+  }),
 
-  // ── System accent (Material You — follows device wallpaper) ──
-  systemAccent: {
-    ios: "systemOrange",
-    android: {
-      light: "@android:color/system_accent1_400",
-      dark: "@android:color/system_accent1_600",
-    },
-    fallback: {
-      light: "#007AFF",
-      dark: "#0A84FF",
-    },
-  },
-  accentBackground: {
-    ios: "systemFill", // Standard dynamic fill color
-    android: {
-      light: "@android:color/system_accent2_400",
-      dark: "@android:color/system_accent2_600",
-    },
-    fallback: {
-      light: "#E8E0F0",
-      dark: "#2A2040",
-    },
-  },
+  // "on" colors — text/icons that sit on top of accent surfaces
+  onBrandAccent: Platform.select({
+    ios: "#FFFFFF",
+    android: Color.android.dynamic.onPrimary,
+    default: "#FFFFFF",
+  }),
+
+  // System accent (Material You / Adaptive)
+  systemAccent: Platform.select({
+    ios: Color.ios.systemOrange,
+    android: Color.android.dynamic.primary,
+    default: "#007AFF",
+  }),
+  accentBackground: Platform.select({
+    ios: Color.ios.systemFill,
+    android: Color.android.dynamic.primaryContainer,
+    default: "#E8E0F0",
+  }),
 
   // Semantic states
-  success: {
-    ios: "systemGreen",
-    android: "@android:color/holo_green_light",
-    fallback: {
-      light: "#34C759",
-      dark: "#30D158",
-    },
-  },
-  warning: {
-    ios: "systemYellow",
-    android: {
-      light: "#FFD60A",
-      dark: "#FFD60A",
-    },
-    fallback: {
-      light: "#FFD60A",
-      dark: "#FFD60A",
-    },
-  },
-  error: {
-    ios: "systemRed",
-    android: "@android:color/holo_red_light",
-    fallback: {
-      light: "#FF3B30",
-      dark: "#FF453A",
-    },
-  },
-  info: {
-    ios: "systemTeal",
-    android: "@android:color/holo_blue_bright",
-    fallback: {
-      light: "#5AC8FA",
-      dark: "#64D2FF",
-    },
-  },
+  success: Platform.select({
+    ios: Color.ios.systemGreen,
+    android: "#99cc00", // Android holo_green_light hex
+    default: "#34C759",
+  }),
+  warning: Platform.select({
+    ios: Color.ios.systemYellow,
+    android: Color.android.dynamic.tertiary,
+    default: "#FFD60A",
+  }),
+  error: Platform.select({
+    ios: Color.ios.systemRed,
+    android: Color.android.dynamic.error,
+    default: "#FF3B30",
+  }),
+  info: Platform.select({
+    ios: Color.ios.systemTeal,
+    android: "#33b5e5", // Android holo_blue_bright hex
+    default: "#5AC8FA",
+  }),
 
   // UI surfaces
-  card: {
-    ios: "secondarySystemBackground",
-    android: "?attr/colorSurface",
-    fallback: {
-      light: "#FFFFFF",
-      dark: "#1C1C1E",
-    },
-  },
-  overlay: {
-    ios: "systemGray5",
-    android: {
-      light: "@android:color/system_neutral2_100",
-      dark: "@android:color/system_neutral2_800",
-    },
-    fallback: {
-      light: "rgba(0,0,0,0.1)",
-      dark: "rgba(255,255,255,0.1)",
-    },
-  },
-  shadow: {
-    ios: "systemGray4",
-    android: {
-      light: "@android:color/system_neutral1_500",
-      dark: "@android:color/system_neutral1_900",
-    },
-    fallback: {
-      light: "rgba(0,0,0,0.25)",
-      dark: "rgba(0,0,0,0.5)",
-    },
-  },
+  card: Platform.select({
+    ios: Color.ios.secondarySystemBackground,
+    android: Color.android.dynamic.surfaceContainerLow,
+    default: "#FFFFFF",
+  }),
+  overlay: Platform.select({
+    ios: Color.ios.systemGray5,
+    android: Color.android.dynamic.surfaceContainerHighest,
+    default: "rgba(0,0,0,0.1)",
+  }),
+  shadow: Platform.select({
+    ios: Color.ios.systemGray4,
+    android: Color.android.dynamic.shadow,
+    default: "rgba(0,0,0,0.25)",
+  }),
 
-  // Tab bar (brand-tinted)
-  tabBarBackground: {
-    ios: "systemOrange",
-    android: {
-      light: "@android:color/system_accent1_600",
-      dark: "@android:color/system_accent1_900",
-    },
-    fallback: {
-      light: "#007AFF",
-      dark: "#0A84FF",
-    },
-  },
-  tabBarIndicator: {
-    ios: "systemOrange",
-    android: {
-      light: "#FF9500",
-      dark: "#FF9F0A",
-    },
-    fallback: {
-      light: "#FF9500",
-      dark: "#FF9F0A",
-    },
-  },
-} satisfies Record<string, ColorDefinition>;
+  // Tab bar
+  tabBarBackground: Platform.select({
+    ios: Color.ios.systemOrange,
+    android: Color.android.dynamic.primary,
+    default: "#007AFF",
+  }),
+  tabBarIndicator: Platform.select({
+    ios: Color.ios.systemOrange,
+    android: Color.android.dynamic.primaryContainer,
+    default: "#FF9500",
+  }),
+};
+
+export type ThemeColors = typeof colors;

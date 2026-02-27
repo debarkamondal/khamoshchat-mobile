@@ -4,27 +4,27 @@ import { KeyPair, VXEdDSAOutput } from "./LibsignalDezire.types";
 
 class LibsignalDezireModule extends NativeModule {
   async vxeddsaSign(
-    u: Uint8Array,
-    M: Uint8Array,
-    z: Uint8Array,
+    _u: Uint8Array,
+    _M: Uint8Array,
+    _z: Uint8Array,
   ): Promise<VXEdDSAOutput> {
-    return await this.nativeModule.vxeddsaSign(u, M, z);
+    throw new Error("LibsignalDezire is not available on web");
   }
   async vxeddsaVerify(
-    u: Uint8Array,
-    M: Uint8Array,
-    signature: Uint8Array,
+    _u: Uint8Array,
+    _M: Uint8Array,
+    _signature: Uint8Array,
   ): Promise<Uint8Array | null> {
-    return await this.nativeModule.vxeddsaVerify(u, M, signature);
+    throw new Error("LibsignalDezire is not available on web");
   }
-  async genPubKey(k: Uint8Array): Promise<Uint8Array> {
-    return await this.nativeModule.genPubKey(k);
+  async genPubKey(_k: Uint8Array): Promise<Uint8Array> {
+    throw new Error("LibsignalDezire is not available on web");
   }
   async genSecret(): Promise<Uint8Array> {
-    return await this.nativeModule.genSecret();
+    throw new Error("LibsignalDezire is not available on web");
   }
   async genKeyPair(): Promise<KeyPair> {
-    return await this.nativeModule.genKeyPair();
+    throw new Error("LibsignalDezire is not available on web");
   }
 }
 

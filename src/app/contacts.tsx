@@ -1,4 +1,4 @@
-import { FlatList, Platform, Pressable, StyleSheet, View } from "react-native";
+import { FlatList, Platform, Pressable, StyleSheet } from "react-native";
 import StyledText from "../components/StyledText";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import StyledTextInput from "../components/StyledTextInput";
 import Card from "../components/Card";
 import { getContacts, SplitContact } from "@/src/utils/helpers/contacts";
-import { Link, router } from "expo-router";
+import { router } from "expo-router";
 
 export default function Contacts() {
   const [contacts, setContacts] = useState<SplitContact[] | null>();

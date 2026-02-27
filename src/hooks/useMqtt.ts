@@ -3,9 +3,8 @@ import { useEffect } from "react";
 import { Alert } from "react-native";
 import useMqttStore from "@/src/store/useMqttStore";
 import useSession from "@/src/store/useSession";
-import { X3DHBundle } from "@/src/utils/crypto";
+import { X3DHBundle, initReceiver, decryptMessage, getIdentityKey } from "@/src/utils/crypto";
 import { receiveInitialMessage, receiveMessage } from "@/src/utils/messaging";
-import { initReceiver, decryptMessage, getIdentityKey } from "@/src/utils/crypto";
 import { Buffer } from "buffer";
 
 const useMqtt = (topic: string) => {

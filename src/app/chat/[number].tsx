@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Contacts from "expo-contacts";
-import { View, StyleSheet, Alert, FlatList, NativeScrollEvent, NativeSyntheticEvent, Pressable } from "react-native";
+import { View, StyleSheet, FlatList, NativeScrollEvent, NativeSyntheticEvent, Pressable } from "react-native";
 import { sendInitialMessage, sendMessage } from '@/src/utils/messaging';
 import { openChatDatabase, closeChatDatabase, getMessages, subscribeToMessages, Message } from '@/src/utils/storage';
 import ChatBubble from "@/src/components/ChatBubble";
@@ -236,8 +236,8 @@ export default function Chat() {
           onPress={() => handleSendMessage(message)}
           style={styles.messageButton}
         >
-          <StyledText>
-            <Ionicons name="send" size={24} color={colors.textPrimary} />
+          <StyledText style={{ color: colors.onBrandAccent }}>
+            <Ionicons name="send" size={24} color={colors.onBrandAccent as string} />
           </StyledText>
         </StyledButton>
       </View>

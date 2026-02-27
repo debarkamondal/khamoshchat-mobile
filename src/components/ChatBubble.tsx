@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import StyledText from '@/src/components/StyledText';
 import { useThemedStyles } from '@/src/hooks/useTheme';
 import { Message } from '@/src/utils/storage';

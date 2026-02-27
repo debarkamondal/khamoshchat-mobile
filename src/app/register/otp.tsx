@@ -9,7 +9,7 @@ import { generateOpks } from "@/src/utils/crypto";
 import { router } from "expo-router";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 
-export default function otp() {
+export default function Otp() {
   const { colors } = useTheme();
   const session = useSession();
 
@@ -81,7 +81,7 @@ export default function otp() {
         <StyledText style={dynamicStyles.linkText}>Resend OTP</StyledText>
       </StyledButton>
       <StyledButton>
-        <StyledText>Continue</StyledText>
+        <StyledText style={{ color: colors.onBrandAccent }}>Continue</StyledText>
       </StyledButton>
     </SafeAreaView>
   );

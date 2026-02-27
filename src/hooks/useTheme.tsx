@@ -1,25 +1,22 @@
 import React, { createContext, useContext, useMemo } from "react";
-import { Platform, PlatformColor, StyleSheet, useColorScheme, OpaqueColorValue } from "react-native";
-import { requiredColors } from "@/src/static/colors";
-
-// Derive color keys from the requiredColors object
-type ColorKeys = keyof typeof requiredColors;
-
-// Type for the computed colors object (maps color keys to color values)
-type ComputedColors = { [K in ColorKeys]: string | OpaqueColorValue };
+import { StyleSheet, useColorScheme } from "react-native";
+import { colors, ThemeColors } from "@/src/static/colors";
 
 // Define types for the Theme Context
 interface ThemeContextType {
-  colors: ComputedColors;
+  colors: ThemeColors;
   scheme: "light" | "dark" | null;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  // useColorScheme from react-native returns 'light', 'dark', or undefined
-  const scheme = useColorScheme() ?? 'light';
-  const colors = useMemo(() => computeColors(scheme), [scheme]);
+  // useColorScheme from react-native returns 'light', 'dark', 'unspecified', or null
+  // Calling this here triggers a re-render when the system theme changes
+  // which is required for Color.android.dynamic.* to update correctly
+  const rawScheme = useColorScheme();
+  const scheme = rawScheme === 'light' || rawScheme === 'dark' ? rawScheme : 'light';
+
   return (
     <ThemeContext.Provider value={{ colors, scheme }}>
       {children}
@@ -35,33 +32,7 @@ export function useTheme() {
   return context;
 }
 
-function computeColors(scheme: "light" | "dark" | null): ComputedColors {
-  const platform = Platform.OS;
-  const colorObj = {} as ComputedColors;
-
-  for (const color of Object.keys(requiredColors) as ColorKeys[]) {
-    const colorDef = requiredColors[color];
-    if (platform === "ios") {
-      colorObj[color] = PlatformColor(colorDef.ios);
-    } else if (platform === "android") {
-      const androidColor =
-        typeof colorDef.android === "string"
-          ? colorDef.android
-          : colorDef.android[scheme === "light" ? "light" : "dark"];
-      // Raw hex/rgba strings are used directly; resource refs go through PlatformColor
-      colorObj[color] =
-        androidColor.startsWith("#") || androidColor.startsWith("rgb")
-          ? androidColor
-          : PlatformColor(androidColor);
-    } else {
-      colorObj[color] = colorDef.fallback[scheme ?? "light"];
-    }
-  }
-  return colorObj;
-}
-
-// Export the type for colors object
-export type ThemeColors = ComputedColors;
+export type { ThemeColors };
 
 /**
  * Hook for creating memoized themed styles.
