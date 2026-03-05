@@ -59,7 +59,6 @@ function InnerLayout({ isRegistered }: { isRegistered: boolean }) {
             sheetGrabberVisible: true,
             sheetAllowedDetents: Platform.OS === "ios" ? [0.7, 0.95] : [1],
             presentation: Platform.OS === "ios" ? "formSheet" : "modal",
-            // headerTransparent: Platform.OS === "ios" ? true : false,
             contentStyle: {
               backgroundColor: isLiquidGlassAvailable()
                 ? "transparent"
@@ -71,7 +70,7 @@ function InnerLayout({ isRegistered }: { isRegistered: boolean }) {
                   ? "transparent"
                   : colors.background as string,
             },
-            headerBlurEffect: isLiquidGlassAvailable() ? undefined : "dark", // or based on your color scheme
+            headerBlurEffect: isLiquidGlassAvailable() ? undefined : "dark",
           }}
         />
       </Stack.Protected>

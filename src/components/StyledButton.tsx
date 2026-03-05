@@ -67,23 +67,15 @@ const StyledButton = ({
           ? { color: "#00000020" }  // Use string color; PlatformColor values don't work with android_ripple
           : undefined
       }
+      style={({ pressed }) => [
+        styles.base,
+        variant === "link" ? styles.link : styles.default,
+        pressed && (variant === "link" ? styles.pressedLink : styles.pressedDefault),
+        style,
+      ]}
       {...restProps}
     >
-      {({ pressed }) => (
-        <View style={[
-          variant === "link"
-            ? [styles.base, styles.link, pressed && styles.pressedLink]
-            : [styles.base, styles.default, pressed && styles.pressedDefault],
-          style
-        ]}>
-          <Text style={[
-            variant === "link" ? styles.textLink : styles.textDefault,
-            textStyle
-          ]}>
-            {children}
-          </Text>
-        </View>
-      )}
+      {children}
     </Pressable>
   );
 };
