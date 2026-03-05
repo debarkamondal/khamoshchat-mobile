@@ -110,13 +110,16 @@ export default function OtpInput({
       width: 44,
       height: 52,
       borderWidth: 1,
-      borderColor: colors.brandAccent,
+      borderColor: colors.primary,
       borderRadius: 6,
       textAlign: "center",
-      color: colors.textPrimary,
+      color: colors.onBackground,
       fontSize: 20,
       padding: 0,
     } as TextStyle,
+    placeholder: {
+      color: colors.outline,
+    },
   }));
   return (
     <View style={[styles.container, containerStyle]}>
@@ -134,7 +137,7 @@ export default function OtpInput({
           secureTextEntry={secure}
           style={[dynamicStyles.cell, cellStyle]}
           placeholder={placeholder}
-          placeholderTextColor="#999"
+          placeholderTextColor={dynamicStyles.placeholder.color as string}
           editable={editable}
           returnKeyType={returnKeyType}
           textContentType={Platform.OS === "ios" ? "oneTimeCode" : "none"}

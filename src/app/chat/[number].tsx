@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Contacts from "expo-contacts";
-import { View, StyleSheet, Alert, FlatList, NativeScrollEvent, NativeSyntheticEvent, Pressable } from "react-native";
+import { View, StyleSheet, FlatList, NativeScrollEvent, NativeSyntheticEvent, Pressable } from "react-native";
 import { sendInitialMessage, sendMessage } from '@/src/utils/messaging';
 import { openChatDatabase, closeChatDatabase, getMessages, subscribeToMessages, Message } from '@/src/utils/storage';
 import ChatBubble from "@/src/components/ChatBubble";
@@ -149,7 +149,7 @@ export default function Chat() {
   const themedStyles = useThemedStyles((colors) => ({
     container: {
       flex: 1,
-      backgroundColor: colors.backgroundPrimary,
+      backgroundColor: colors.background,
     },
     messageContainer: {
       flex: 1,
@@ -163,7 +163,7 @@ export default function Chat() {
       height: 40,
       borderRadius: 20,
       borderCurve: 'continuous',
-      backgroundColor: colors.backgroundSecondary,
+      backgroundColor: colors.surface,
       alignItems: 'center',
       justifyContent: 'center',
       shadowColor: '#000',
@@ -184,7 +184,7 @@ export default function Chat() {
       <View style={styles.header}>
         <StyledButton onPress={() => router.back()} variant="link">
           <Ionicons
-            color={colors.brandAccent}
+            color={colors.primary}
             name="chevron-back"
             size={24}
           />
@@ -214,7 +214,7 @@ export default function Chat() {
           style={themedStyles.scrollToBottomButton}
           onPress={scrollToBottom}
         >
-          <Ionicons name="chevron-down" size={24} color={colors.textPrimary} />
+          <Ionicons name="chevron-down" size={24} color={colors.onBackground} />
         </Pressable>
       )}
 
@@ -222,7 +222,7 @@ export default function Chat() {
         style={StyleSheet.flatten([
           messageBarInsetStyle,
           styles.messageBar,
-          { backgroundColor: colors.backgroundPrimary } // Ensure background covers list
+          { backgroundColor: colors.background } // Ensure background covers list
         ])}
       >
         <StyledTextInput
@@ -236,9 +236,7 @@ export default function Chat() {
           onPress={() => handleSendMessage(message)}
           style={styles.messageButton}
         >
-          <StyledText>
-            <Ionicons name="send" size={24} color={colors.textPrimary} />
-          </StyledText>
+          <Ionicons name="send" size={24} color={colors.onPrimary as string} />
         </StyledButton>
       </View>
     </SafeAreaView>

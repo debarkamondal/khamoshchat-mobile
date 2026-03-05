@@ -9,7 +9,7 @@ import { generateOpks } from "@/src/utils/crypto";
 import { router } from "expo-router";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 
-export default function otp() {
+export default function Otp() {
   const { colors } = useTheme();
   const session = useSession();
 
@@ -54,11 +54,11 @@ export default function otp() {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: colors.backgroundPrimary,
-      color: colors.textPrimary,
+      backgroundColor: colors.background,
+      color: colors.onBackground,
     },
     linkText: {
-      color: colors.brandAccent,
+      color: colors.primary,
       textDecorationLine: "underline",
       fontSize: 14,
     },

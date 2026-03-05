@@ -6,7 +6,7 @@ import StyledTextInput from "../components/StyledTextInput";
 import Card from "../components/Card";
 import { getContacts, SplitContact } from "@/src/utils/helpers/contacts";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Link, router } from "expo-router";
+import { router } from "expo-router";
 
 export default function Contacts() {
   const [contacts, setContacts] = useState<SplitContact[] | null>();

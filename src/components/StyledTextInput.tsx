@@ -6,18 +6,22 @@ const StyledTextInput = ({ style: styles, ...restProps }: TextInputProps) => {
   const [isInFocus, setIsInFocus] = useState(false);
   const defaultStyles = useThemedStyles((colors) => ({
     textInputDefault: {
-      color: colors.textPrimary,
+      color: colors.onBackground,
       borderWidth: 2,
       padding: 8,
       borderRadius: 5,
-      borderColor: colors.border,
+      borderColor: colors.outlineVariant,
     },
     textInputActive: {
-      borderColor: colors.brandAccent,
+      borderColor: colors.primary,
+    },
+    placeholder: {
+      color: colors.outline,
     },
   }));
   return (
     <Input
+      placeholderTextColor={defaultStyles.placeholder.color as string}
       style={StyleSheet.flatten([
         defaultStyles.textInputDefault,
         isInFocus ? defaultStyles.textInputActive : undefined,

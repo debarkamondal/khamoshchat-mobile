@@ -8,7 +8,7 @@ export default function Calls() {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: colors.backgroundPrimary,
+      backgroundColor: colors.background,
     },
   }));
   return (

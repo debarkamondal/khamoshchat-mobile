@@ -67,7 +67,7 @@ export default function Index() {
   const themedStyles = useThemedStyles((colors) => ({
     container: {
       flex: 1,
-      backgroundColor: colors.backgroundPrimary,
+      backgroundColor: colors.background,
     },
     headerSection: {
       paddingHorizontal: 16,
@@ -77,14 +77,14 @@ export default function Index() {
     chatTitle: {
       fontSize: 32,
       fontWeight: "700" as const,
-      color: colors.textPrimary,
+      color: colors.onBackground,
       marginBottom: 12,
       marginTop: 12,
     },
     searchContainer: {
       flexDirection: "row" as const,
       alignItems: "center" as const,
-      backgroundColor: colors.backgroundSecondary,
+      backgroundColor: colors.surface,
       borderRadius: 12,
       paddingHorizontal: 12,
     },
@@ -100,18 +100,21 @@ export default function Index() {
       paddingHorizontal: 16,
       paddingVertical: 12,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
+      borderBottomColor: colors.outlineVariant,
     },
     avatar: {
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: colors.backgroundSecondary,
+      backgroundColor: colors.surface,
       justifyContent: "center" as const,
       alignItems: "center" as const,
       marginRight: 12,
     },
     emptyContainer: {
+      flex: 1,
+    },
+    emptyContent: {
       flex: 1,
       justifyContent: "center" as const,
       alignItems: "center" as const,
@@ -119,14 +122,14 @@ export default function Index() {
   }));
 
   // FAB position style
-  const contactButtonStyle = useMemo(() => ({
+  const contactButtonStyle = {
     position: "absolute" as const,
-    bottom: Platform.OS === "ios" ? insets.bottom + 55 : insets.bottom + 120,
-    right: 10,
+    bottom: Platform.OS === "ios" ? insets.bottom + 16 : 16,
+    right: 16,
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderRadius: 50,
-  }), [insets.bottom]);
+  };
 
   const renderThread = useCallback(({ item }: { item: ChatThread }) => (
     <Pressable
@@ -143,12 +146,12 @@ export default function Index() {
           <StyledText style={styles.threadName} numberOfLines={1}>
             {item.name || item.phone}
           </StyledText>
-          <StyledText style={[styles.threadTime, { color: colors.textTertiary }]}>
+          <StyledText style={[styles.threadTime, { color: colors.outline }]}>
             {formatTime(item.last_message_at)}
           </StyledText>
         </View>
         <StyledText
-          style={[styles.threadPreview, { color: colors.textSecondary }]}
+          style={[styles.threadPreview, { color: colors.onSurfaceVariant }]}
           numberOfLines={1}
         >
           {item.last_message || ''}
@@ -161,11 +164,11 @@ export default function Index() {
     <View style={themedStyles.headerSection}>
       <StyledText style={themedStyles.chatTitle}>Chat</StyledText>
       <View style={themedStyles.searchContainer}>
-        <MaterialCommunityIcons name="magnify" size={20} color={colors.textTertiary as string} />
+        <MaterialCommunityIcons name="magnify" size={20} color={colors.outline as string} />
         <StyledTextInput
           style={themedStyles.searchInput}
           placeholder="Search chats..."
-          placeholderTextColor={colors.textTertiary as string}
+          placeholderTextColor={colors.outline as string}
           value={searchQuery}
           onChangeText={setSearchQuery}
           autoCorrect={false}
@@ -173,7 +176,7 @@ export default function Index() {
         />
         {searchQuery.length > 0 && (
           <Pressable onPress={() => setSearchQuery("")} hitSlop={8}>
-            <MaterialCommunityIcons name="close-circle" size={18} color={colors.textTertiary as string} />
+            <MaterialCommunityIcons name="close-circle" size={18} color={colors.outline as string} />
           </Pressable>
         )}
       </View>
@@ -185,9 +188,11 @@ export default function Index() {
       {threads.length === 0 ? (
         <View style={themedStyles.emptyContainer}>
           {ListHeader}
-          <StyledText style={{ color: colors.textTertiary }}>
-            No conversations yet
-          </StyledText>
+          <View style={themedStyles.emptyContent}>
+            <StyledText style={{ color: colors.outline }}>
+              No conversations yet
+            </StyledText>
+          </View>
         </View>
       ) : (
         <FlatList
@@ -202,9 +207,7 @@ export default function Index() {
         style={contactButtonStyle}
         onPress={() => router.push("/contacts")}
       >
-        <StyledText>
-          <MaterialCommunityIcons name="contacts" size={28} />
-        </StyledText>
+        <MaterialCommunityIcons name="contacts" size={28} />
       </StyledButton>
     </SafeAreaView>
   );

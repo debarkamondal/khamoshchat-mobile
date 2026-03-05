@@ -3,9 +3,8 @@ import { useEffect } from "react";
 import { Alert } from "react-native";
 import useMqttStore from "@/src/store/useMqttStore";
 import useSession from "@/src/store/useSession";
-import { X3DHBundle } from "@/src/utils/crypto";
+import { X3DHBundle, initReceiver, decryptMessage, getIdentityKey } from "@/src/utils/crypto";
 import { receiveInitialMessage, receiveMessage } from "@/src/utils/messaging";
-import { initReceiver, decryptMessage, getIdentityKey } from "@/src/utils/crypto";
 import { Buffer } from "buffer";
 
 const useMqtt = (topic: string) => {
@@ -17,107 +16,107 @@ const useMqtt = (topic: string) => {
 
         let mqttClient: MqttClient;
 
-        try {
-            // Using wss and port 8084
-            mqttClient = mqtt.connect("wss://mqtt.dkmondal.in/mqtt", {
-                port: 8443,
-                protocol: "wss",
-                username: "dezire",
-                password: "test1234",
-                protocolVersion: 5,
-                connectTimeout: 5000,
-                clientId: `khamosh_chat_${Math.random().toString(16).slice(2, 8)}`, // Unique client ID
-                clean: true, // Clean session
-            });
+        // try {
+        //     // Using wss and port 8084
+        //     mqttClient = mqtt.connect("wss://mqtt.dkmondal.in/mqtt", {
+        //         port: 8443,
+        //         protocol: "wss",
+        //         username: "dezire",
+        //         password: "test1234",
+        //         protocolVersion: 5,
+        //         connectTimeout: 5000,
+        //         clientId: `khamosh_chat_${Math.random().toString(16).slice(2, 8)}`, // Unique client ID
+        //         clean: true, // Clean session
+        //     });
 
-            // 1. Handle Connection
-            mqttClient.on("connect", () => {
-                console.log(`Connected to MQTT broker for topic: ${topic}`);
-                const topicPath = `/khamoshchat/${encodeURIComponent(topic)}/#`;
+        //     // 1. Handle Connection
+        //     mqttClient.on("connect", () => {
+        //         console.log(`Connected to MQTT broker for topic: ${topic}`);
+        //         const topicPath = `/khamoshchat/${encodeURIComponent(topic)}/#`;
 
-                mqttClient.subscribe(topicPath, (err) => {
-                    if (err) {
-                        console.error("Subscription error:", err);
-                        Alert.alert(
-                            "Error",
-                            "Couldn't connect to the server. Please check your internet connection.",
-                            [{ text: "OK", style: 'cancel' }]
-                        );
-                    }
-                });
-            });
+        //         mqttClient.subscribe(topicPath, (err) => {
+        //             if (err) {
+        //                 console.error("Subscription error:", err);
+        //                 Alert.alert(
+        //                     "Error",
+        //                     "Couldn't connect to the server. Please check your internet connection.",
+        //                     [{ text: "OK", style: 'cancel' }]
+        //                 );
+        //             }
+        //         });
+        //     });
 
-            mqttClient.on("reconnect", () => {
-                console.log("MQTT Client reconnecting...");
-            });
+        //     mqttClient.on("reconnect", () => {
+        //         console.log("MQTT Client reconnecting...");
+        //     });
 
-            mqttClient.on("close", () => {
-                console.log("MQTT Client closed.");
-            });
+        //     mqttClient.on("close", () => {
+        //         console.log("MQTT Client closed.");
+        //     });
 
-            mqttClient.on("offline", () => {
-                console.log("MQTT Client offline.");
-            });
+        //     mqttClient.on("offline", () => {
+        //         console.log("MQTT Client offline.");
+        //     });
 
-            // 2. Handle Errors
-            mqttClient.on("error", (err) => {
-                console.error("MQTT Error:", err);
-            });
+        //     // 2. Handle Errors
+        //     mqttClient.on("error", (err) => {
+        //         console.error("MQTT Error:", err);
+        //     });
 
-            // 3. Handle Messages
-            const handleMessage = async (msgTopic: string, message: Buffer) => {
-                try {
-                    const parsedMessage = JSON.parse(message.toString());
-                    const payload = parsedMessage as X3DHBundle & { ciphertext: string; header: string };
+        //     // 3. Handle Messages
+        //     const handleMessage = async (msgTopic: string, message: Buffer) => {
+        //         try {
+        //             const parsedMessage = JSON.parse(message.toString());
+        //             const payload = parsedMessage as X3DHBundle & { ciphertext: string; header: string };
 
-                    // Extract sender from topic: /khamoshchat/<recipient>/<sender>
-                    const topicParts = msgTopic.split('/');
-                    const senderPhone = topicParts.length >= 4 ? decodeURIComponent(topicParts[3]) : null;
+        //             // Extract sender from topic: /khamoshchat/<recipient>/<sender>
+        //             const topicParts = msgTopic.split('/');
+        //             const senderPhone = topicParts.length >= 4 ? decodeURIComponent(topicParts[3]) : null;
 
-                    if (senderPhone && payload.identityKey && payload.ephemeralKey && payload.opkId !== undefined) {
-                        if (session.isRegistered) {
-                            await receiveInitialMessage({
-                                session,
-                                payload,
-                                senderPhone,
-                                initReceiver: (sharedSecret, receiverPriv, receiverPub, identityKey) =>
-                                    initReceiver(senderPhone, sharedSecret, receiverPriv, receiverPub, identityKey),
-                                decrypt: (header, ciphertext, ad) =>
-                                    decryptMessage(senderPhone, header, ciphertext, ad)
-                            });
-                        }
-                    } else if (senderPhone && payload.ciphertext && payload.header) {
-                        // Subsequent message
-                        const identityKey = await getIdentityKey(senderPhone);
-                        if (identityKey) {
-                            await receiveMessage({
-                                session,
-                                payload,
-                                senderPhone,
-                                senderIdentityKey: identityKey,
-                                decrypt: (header, ciphertext, ad) => decryptMessage(senderPhone, header, ciphertext, ad)
-                            })
-                        }
-                    }
-                } catch (e) {
-                    console.error("Global Handler - Error processing message:", e);
-                }
-            };
+        //             if (senderPhone && payload.identityKey && payload.ephemeralKey && payload.opkId !== undefined) {
+        //                 if (session.isRegistered) {
+        //                     await receiveInitialMessage({
+        //                         session,
+        //                         payload,
+        //                         senderPhone,
+        //                         initReceiver: (sharedSecret, receiverPriv, receiverPub, identityKey) =>
+        //                             initReceiver(senderPhone, sharedSecret, receiverPriv, receiverPub, identityKey),
+        //                         decrypt: (header, ciphertext, ad) =>
+        //                             decryptMessage(senderPhone, header, ciphertext, ad)
+        //                     });
+        //                 }
+        //             } else if (senderPhone && payload.ciphertext && payload.header) {
+        //                 // Subsequent message
+        //                 const identityKey = await getIdentityKey(senderPhone);
+        //                 if (identityKey) {
+        //                     await receiveMessage({
+        //                         session,
+        //                         payload,
+        //                         senderPhone,
+        //                         senderIdentityKey: identityKey,
+        //                         decrypt: (header, ciphertext, ad) => decryptMessage(senderPhone, header, ciphertext, ad)
+        //                     })
+        //                 }
+        //             }
+        //         } catch (e) {
+        //             console.error("Global Handler - Error processing message:", e);
+        //         }
+        //     };
 
-            mqttClient.on("message", handleMessage);
+        //     mqttClient.on("message", handleMessage);
 
-            // Update Global Store
-            setClient(mqttClient);
+        //     // Update Global Store
+        //     setClient(mqttClient);
 
-        } catch (error) {
-            console.error("MQTT Connection Error:", error);
-        }
+        // } catch (error) {
+        //     console.error("MQTT Connection Error:", error);
+        // }
 
-        return () => {
-            if (mqttClient) {
-                mqttClient.end();
-            }
-        };
+        // return () => {
+        //     if (mqttClient) {
+        //         mqttClient.end();
+        //     }
+        // };
     }, [topic, session, setClient]);
 };
 

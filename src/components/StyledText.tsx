@@ -4,7 +4,7 @@ import { useThemedStyles } from "@/src/hooks/useTheme";
 const StyledText = ({ style: styles, ...restProps }: TextProps) => {
   const defaultStyles = useThemedStyles((colors) => ({
     textDefault: {
-      color: colors.textPrimary,
+      color: colors.onBackground,
       fontSize: 18,
     },
   }));

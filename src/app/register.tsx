@@ -1,20 +1,21 @@
-import { Alert, StyleSheet, View } from "react-native";
+import { Alert, Platform, StyleSheet, useColorScheme, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import StyledStyledTextInput from "@/src/components/StyledTextInput";
 import StyledButton from "@/src/components/StyledButton";
 import { Feather } from "@expo/vector-icons";
-import { Link, router } from "expo-router";
+import { Color, Link, router } from "expo-router";
 import { useTheme } from "@/src/hooks/useTheme";
 import StyledText from "@/src/components/StyledText";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import "./../polyfills/crypto";
 import useSession from "@/src/store/useSession";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 
-export default function register() {
+export default function Register() {
   const { colors } = useTheme();
   const [phone, setPhone] = useState<string>();
   const [countryCode, setCountryCode] = useState<string>("+91");
+
 
   const { initSession, clearSession } = useSession();
   const confirmationAlert = () => {
@@ -61,28 +62,36 @@ export default function register() {
     );
   };
 
-  const dynamicStyle = useMemo(
-    () =>
-      StyleSheet.create({
-        helpLink: {
-          position: "absolute",
-          bottom: 48,
-          color: colors.brandAccent,
-        },
-        heading: {
-          fontSize: 24,
-          color: colors.textPrimary,
-        },
-        container: {
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: colors.backgroundPrimary,
-          color: colors.textPrimary,
-        },
+  const dynamicStyle = StyleSheet.create({
+    helpLink: {
+      position: "absolute",
+      bottom: 48,
+      color: Platform.select({
+        ios: Color.ios.systemOrange,
+        android: Color.android.dynamic.primary,
+        default: "#FF9500",
       }),
-    [colors],
-  );
+
+    },
+    heading: {
+      fontSize: 24,
+      color: colors.onBackground,
+    },
+    text: {
+      color: colors.onPrimary,
+    },
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: Platform.select({
+        ios: Color.ios.systemBackground,
+        android: Color.android.dynamic.surface,
+        default: "#FFFFFF",
+      }),
+      color: colors.onBackground,
+    },
+  })
   return (
     <SafeAreaView style={dynamicStyle.container}>
       <StyledText style={dynamicStyle.heading}>
@@ -108,11 +117,11 @@ export default function register() {
         />
       </View>
       <StyledButton style={styles.button} onPress={confirmationAlert}>
-        <StyledText>Continue</StyledText>
+        <StyledText style={dynamicStyle.text}>Continue</StyledText>
         <Feather
           size={16}
           style={{ marginTop: 2 }}
-          color={colors.textPrimary}
+          color={colors.onPrimary as string}
           name="arrow-right"
         />
       </StyledButton>
