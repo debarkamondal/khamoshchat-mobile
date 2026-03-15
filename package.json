@@ -14,6 +14,7 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@ecodevstack/react-native-mqtt-client": "^0.3.2",
     "@expo/vector-icons": "^15.1.1",
     "@react-navigation/bottom-tabs": "^7.15.5",
     "@react-navigation/elements": "^2.9.10",
@@ -39,7 +40,6 @@
     "expo-symbols": "~55.0.4",
     "expo-system-ui": "~55.0.9",
     "expo-web-browser": "~55.0.9",
-    "mqtt": "^5.15.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-native": "0.83.2",

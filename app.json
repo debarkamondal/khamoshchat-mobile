@@ -63,7 +63,8 @@
       ],
       "expo-font",
       "expo-image",
-      "expo-web-browser"
+      "expo-web-browser",
+      "./plugins/withMqttModules"
     ],
     "experiments": {
       "typedRoutes": true,

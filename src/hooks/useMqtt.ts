@@ -1,123 +1,111 @@
-import mqtt, { MqttClient } from "mqtt";
+import Mqtt from "@ecodevstack/react-native-mqtt-client";
 import { useEffect } from "react";
 import { Alert } from "react-native";
 import useMqttStore from "@/src/store/useMqttStore";
 import useSession from "@/src/store/useSession";
 import { X3DHBundle, initReceiver, decryptMessage, getIdentityKey } from "@/src/utils/crypto";
 import { receiveInitialMessage, receiveMessage } from "@/src/utils/messaging";
-import { Buffer } from "buffer";
 
 const useMqtt = (topic: string) => {
-    const { setClient } = useMqttStore();
+    const { setClient, setConnected } = useMqttStore();
     const session = useSession();
 
     useEffect(() => {
         if (!topic) return;
 
-        let mqttClient: MqttClient;
+        let subscriptions: { remove: () => void }[] = [];
 
-        // try {
-        //     // Using wss and port 8084
-        //     mqttClient = mqtt.connect("wss://mqtt.dkmondal.in/mqtt", {
-        //         port: 8443,
-        //         protocol: "wss",
-        //         username: "dezire",
-        //         password: "test1234",
-        //         protocolVersion: 5,
-        //         connectTimeout: 5000,
-        //         clientId: `khamosh_chat_${Math.random().toString(16).slice(2, 8)}`, // Unique client ID
-        //         clean: true, // Clean session
-        //     });
+        const initMqtt = async () => {
+            try {
+                // 1. Handle Messages
+                const messageSub = Mqtt.addListener("onMqttMessageReceived", async (data: { topic: string; message: string }) => {
+                    try {
+                        const parsedMessage = JSON.parse(data.message);
+                        const payload = parsedMessage as X3DHBundle & { ciphertext: string; header: string };
+                        
+                        console.log("MQTT Received Message:", data.topic, payload);
 
-        //     // 1. Handle Connection
-        //     mqttClient.on("connect", () => {
-        //         console.log(`Connected to MQTT broker for topic: ${topic}`);
-        //         const topicPath = `/khamoshchat/${encodeURIComponent(topic)}/#`;
+                        // Extract sender from topic: /khamoshchat/<recipient>/<sender>
+                        const topicParts = data.topic.split('/');
+                        const senderPhone = topicParts.length >= 4 ? decodeURIComponent(topicParts[3]) : null;
 
-        //         mqttClient.subscribe(topicPath, (err) => {
-        //             if (err) {
-        //                 console.error("Subscription error:", err);
-        //                 Alert.alert(
-        //                     "Error",
-        //                     "Couldn't connect to the server. Please check your internet connection.",
-        //                     [{ text: "OK", style: 'cancel' }]
-        //                 );
-        //             }
-        //         });
-        //     });
+                        if (senderPhone && payload.identityKey && payload.ephemeralKey && payload.opkId !== undefined) {
+                            if (session.isRegistered) {
+                                await receiveInitialMessage({
+                                    session,
+                                    payload,
+                                    senderPhone,
+                                    initReceiver: (sharedSecret, receiverPriv, receiverPub, identityKey) =>
+                                        initReceiver(senderPhone, sharedSecret, receiverPriv, receiverPub, identityKey),
+                                    decrypt: (header, ciphertext, ad) =>
+                                        decryptMessage(senderPhone, header, ciphertext, ad)
+                                });
+                            }
+                        } else if (senderPhone && payload.ciphertext && payload.header) {
+                            // Subsequent message
+                            const identityKey = await getIdentityKey(senderPhone);
+                            if (identityKey) {
+                                await receiveMessage({
+                                    session,
+                                    payload,
+                                    senderPhone,
+                                    senderIdentityKey: identityKey,
+                                    decrypt: (header, ciphertext, ad) => decryptMessage(senderPhone, header, ciphertext, ad)
+                                })
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Global Handler - Error processing message:", e);
+                    }
+                });
+                subscriptions.push(messageSub);
 
-        //     mqttClient.on("reconnect", () => {
-        //         console.log("MQTT Client reconnecting...");
-        //     });
+                // 2. Handle Connection/Error Events
+                const connectSub = Mqtt.addListener("onMqttConnected", () => {
+                    console.log(`Connected to MQTT broker for topic: ${topic}`);
+                    setConnected(true);
 
-        //     mqttClient.on("close", () => {
-        //         console.log("MQTT Client closed.");
-        //     });
+                    const topicPath = `/khamoshchat/${encodeURIComponent(topic)}/#`;
+                    Mqtt.subscribe(topicPath, 0);
+                });
+                subscriptions.push(connectSub);
 
-        //     mqttClient.on("offline", () => {
-        //         console.log("MQTT Client offline.");
-        //     });
+                const disconnectSub = Mqtt.addListener("onMqttDisconnected", () => {
+                    console.log("MQTT Client disconnected.");
+                    setConnected(false);
+                });
+                subscriptions.push(disconnectSub);
 
-        //     // 2. Handle Errors
-        //     mqttClient.on("error", (err) => {
-        //         console.error("MQTT Error:", err);
-        //     });
+                const errorSub = Mqtt.addListener("onMqttError", (err) => {
+                    console.error("MQTT Error:", err);
+                });
+                subscriptions.push(errorSub);
 
-        //     // 3. Handle Messages
-        //     const handleMessage = async (msgTopic: string, message: Buffer) => {
-        //         try {
-        //             const parsedMessage = JSON.parse(message.toString());
-        //             const payload = parsedMessage as X3DHBundle & { ciphertext: string; header: string };
+                // 3. Connect (port 8883 for SSL)
+                // Note: The library seems to expect a full broker URL
+                console.log(`****************************************************${process.env.EXPO_PUBLIC_MQTT_URL}`)
+                await Mqtt.connect(`${process.env.EXPO_PUBLIC_MQTT_URL}`, "dezire", "test1234");
+                setClient(Mqtt);
 
-        //             // Extract sender from topic: /khamoshchat/<recipient>/<sender>
-        //             const topicParts = msgTopic.split('/');
-        //             const senderPhone = topicParts.length >= 4 ? decodeURIComponent(topicParts[3]) : null;
+            } catch (error) {
+                console.error("MQTT Connection Error:", error);
+                Alert.alert(
+                    "Error",
+                    "Couldn't connect to the messaging server.",
+                    [{ text: "OK", style: 'cancel' }]
+                );
+            }
+        };
 
-        //             if (senderPhone && payload.identityKey && payload.ephemeralKey && payload.opkId !== undefined) {
-        //                 if (session.isRegistered) {
-        //                     await receiveInitialMessage({
-        //                         session,
-        //                         payload,
-        //                         senderPhone,
-        //                         initReceiver: (sharedSecret, receiverPriv, receiverPub, identityKey) =>
-        //                             initReceiver(senderPhone, sharedSecret, receiverPriv, receiverPub, identityKey),
-        //                         decrypt: (header, ciphertext, ad) =>
-        //                             decryptMessage(senderPhone, header, ciphertext, ad)
-        //                     });
-        //                 }
-        //             } else if (senderPhone && payload.ciphertext && payload.header) {
-        //                 // Subsequent message
-        //                 const identityKey = await getIdentityKey(senderPhone);
-        //                 if (identityKey) {
-        //                     await receiveMessage({
-        //                         session,
-        //                         payload,
-        //                         senderPhone,
-        //                         senderIdentityKey: identityKey,
-        //                         decrypt: (header, ciphertext, ad) => decryptMessage(senderPhone, header, ciphertext, ad)
-        //                     })
-        //                 }
-        //             }
-        //         } catch (e) {
-        //             console.error("Global Handler - Error processing message:", e);
-        //         }
-        //     };
+        initMqtt();
 
-        //     mqttClient.on("message", handleMessage);
-
-        //     // Update Global Store
-        //     setClient(mqttClient);
-
-        // } catch (error) {
-        //     console.error("MQTT Connection Error:", error);
-        // }
-
-        // return () => {
-        //     if (mqttClient) {
-        //         mqttClient.end();
-        //     }
-        // };
-    }, [topic, session, setClient]);
+        return () => {
+            subscriptions.forEach(sub => sub.remove());
+            Mqtt.disconnect();
+            setConnected(false);
+            setClient(undefined);
+        };
+    }, [topic, session, setClient, setConnected]);
 };
 
 export default useMqtt;
