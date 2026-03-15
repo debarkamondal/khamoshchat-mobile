@@ -9,6 +9,7 @@ import StyledText from "@/src/components/StyledText";
 import { useState } from "react";
 import "./../polyfills/crypto";
 import useSession from "@/src/store/useSession";
+import GoogleSignInButton from "@/src/components/GoogleSignInButton";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 
 export default function Register() {
@@ -125,6 +126,7 @@ export default function Register() {
           name="arrow-right"
         />
       </StyledButton>
+      <GoogleSignInButton />
       <Link style={dynamicStyle.helpLink} href="/">
         Need help?
       </Link>
