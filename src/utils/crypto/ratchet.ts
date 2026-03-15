@@ -6,7 +6,6 @@
 import LibsignalDezireModule from '@/modules/libsignal-dezire/src/LibsignalDezireModule';
 import { RatchetEncryptResult } from '@/modules/libsignal-dezire/src/LibsignalDezire.types';
 import {
-    ChatSession,
     saveChatSession,
     loadChatSession,
     deleteChatSession,

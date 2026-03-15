@@ -1,4 +1,4 @@
-import { Alert, Platform, StyleSheet, useColorScheme, View } from "react-native";
+import { Alert, Platform, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import StyledStyledTextInput from "@/src/components/StyledTextInput";
 import StyledButton from "@/src/components/StyledButton";
@@ -7,7 +7,7 @@ import { Color, Link, router } from "expo-router";
 import { useTheme } from "@/src/hooks/useTheme";
 import StyledText from "@/src/components/StyledText";
 import { useState } from "react";
-import "./../polyfills/crypto";
+import "../../polyfills/crypto";
 import useSession from "@/src/store/useSession";
 import GoogleSignInButton from "@/src/components/GoogleSignInButton";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";

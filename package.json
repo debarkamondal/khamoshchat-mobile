@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
     "cargo-build-ios": "bun ./scripts/cargo-ios.ts",
     "cargo-build-android": "bun ./scripts/cargo-android.ts",
     "android": "bun ./scripts/cargo-android.ts && expo run:android",

@@ -1,8 +1,8 @@
-import { FlatList, Platform, Pressable, StyleSheet } from "react-native";
+import { FlatList, Platform, Pressable, StyleSheet, View } from "react-native";
 import StyledText from "../components/StyledText";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import StyledTextInput from "../components/StyledTextInput";
 import Card from "../components/Card";
 import { getContacts, SplitContact } from "@/src/utils/helpers/contacts";
@@ -17,15 +17,32 @@ export default function Contacts() {
       setContacts(contacts)
     })();
   }, []);
+
+  const insets = useSafeAreaInsets();
+  
+  const dynamicStyle = useMemo(
+    () => StyleSheet.create({
+      contactList: {
+         paddingBottom: Platform.OS === "ios" ? insets.bottom + 20 : 12,
+      },
+      blurView: {
+         flex: 0,
+         marginTop: Platform.OS === "ios" ? 42 : insets.top || 24,
+         marginHorizontal: Platform.OS === "ios" ? 16 : 12,
+      }
+    }), [insets.bottom, insets.top]
+  );
+
   return (
-    <SafeAreaView style={styles.blurView}>
-      {/* Things inside the SafeAreaView is same for android and ios can be copied */}
-      <StyledText style={styles.heading}>Contacts</StyledText>
-      <StyledTextInput
-        onChangeText={(text) => setSearchTerm(text)}
-        style={styles.searchBar}
-        placeholder="Search contacts"
-      />
+    <SafeAreaView style={dynamicStyle.blurView}>
+      <View style={styles.headingView} collapsable={false}>
+        <StyledText style={styles.heading}>Contacts</StyledText>
+        <StyledTextInput
+          onChangeText={(text) => setSearchTerm(text)}
+          style={styles.searchBar}
+          placeholder="Search contacts"
+        />
+      </View>
       <FlatList
         data={
           searchTerm
@@ -39,7 +56,7 @@ export default function Contacts() {
             : contacts
         }
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.contactList}
+        contentContainerStyle={dynamicStyle.contactList}
         scrollEnabled={true}
         renderItem={({ item }) => (
           <Card styles={styles.cards}>
@@ -48,7 +65,7 @@ export default function Contacts() {
             </StyledText>
             <Pressable
               onPress={() => {
-                const phone = item.number.replace(/(?!^\+)\D/g, "");
+                const phone = item.number.replace(/[^0-9+]/g, "");
                 router.replace(`/chat/${phone}?id=${item.id}`);
               }}
               style={styles.cardContent}
@@ -95,25 +112,9 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginVertical: 8,
   },
-  iconContainer: {
-    backgroundColor: "red",
-    borderRadius: 25,
-    padding: 4,
-    paddingHorizontal: 4,
-  },
-  // searchView: {
-  //   marginBottom: 8,
-  //   marginTop: 8,
-  //   gap: 4,
-  //   flex: 0,
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   justifyContent: "space-between",
-  // },
-  blurView: {
+  headingView: {
     flex: 0,
-    marginTop: Platform.OS === "ios" ? 42 : 24,
-    marginHorizontal: Platform.OS === "ios" ? 16 : 12,
+    marginTop: 8,
   },
   heading: {
     fontSize: 36,

@@ -3,7 +3,7 @@
  * CRUD and pub/sub for the chats table in the primary database.
  */
 
-import { getPrimaryDatabase } from './primaryDatabase';
+import { getPrimaryDatabase } from './database';
 
 /**
  * Chat thread entry for the home screen list.

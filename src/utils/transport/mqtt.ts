@@ -3,7 +3,7 @@
  * Handles message publishing and topic construction.
  */
 
-import Mqtt from '@ecodevstack/react-native-mqtt-client';
+import MqttClient from '@ecodevstack/react-native-mqtt-client';
 
 /**
  * Builds an MQTT topic for sending messages.
@@ -21,7 +21,7 @@ export function publishMessage(
     payload: object
 ): void {
     // Native MQTT client expects message as string
-    Mqtt.publish(topic, JSON.stringify(payload), 0);
+    MqttClient.publish(topic, JSON.stringify(payload), 0);
 }
 
 /**

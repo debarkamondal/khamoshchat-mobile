@@ -50,11 +50,11 @@ export type { ThemeColors };
 export function useThemedStyles<T extends StyleSheet.NamedStyles<T>>(
   styleFactory: (colors: ThemeColors) => T
 ): T {
-  const { colors, scheme } = useTheme();
+  const { colors } = useTheme();
   return useMemo(
     () => StyleSheet.create(styleFactory(colors)),
     // `colors` is now a fresh object when the scheme changes,
     // so styles will recompute with the correct dynamic color values.
-    [colors, scheme, styleFactory]
+    [colors, styleFactory]
   );
 }
