@@ -1,17 +1,13 @@
-import React from "react";
 import {
   Pressable,
-  StyleSheet,
-  TouchableOpacityProps,
+  PressableProps,
   ViewStyle,
   TextStyle,
-  Text,
-  View,
 } from "react-native";
-import { useThemedStyles, useTheme } from "@/src/hooks/useTheme";
+import { useThemedStyles } from "@/src/hooks/useTheme";
 import { ThemeColors } from "@/src/static/colors";
 
-interface StyledButtonProps extends TouchableOpacityProps {
+interface StyledButtonProps extends PressableProps {
   variant?: "default" | "link";
   style?: ViewStyle | ViewStyle[];
   textStyle?: TextStyle | TextStyle[];

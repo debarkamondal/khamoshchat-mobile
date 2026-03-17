@@ -66,7 +66,8 @@ export async function sendInitialMessage({
     // 2. Fetch Bundle
     let preKeyBundle: PreKeyBundle | undefined;
     try {
-        const res = await fetch(`https://identity.dkmondal.in/test/bundle/${number}`, {
+        const baseUrl = process.env.EXPO_PUBLIC_IDENTITY_URL ?? 'https://identity.dkmondal.in/test';
+        const res = await fetch(`${baseUrl.replace(/\/$/, '')}/bundle/${number}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),

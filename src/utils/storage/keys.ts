@@ -8,12 +8,7 @@ import * as SecureStore from 'expo-secure-store';
 import { getRandomValues } from 'expo-crypto';
 import { v4 as uuidv4 } from 'uuid';
 
-// Polyfill for random values if not locally available
-if (typeof global.crypto !== 'object') {
-    global.crypto = {
-        getRandomValues: (array: any) => getRandomValues(array),
-    } as any;
-}
+import "@/src/polyfills/crypto";
 
 /**
  * Sanitizes a chat ID for use in SecureStore keys.

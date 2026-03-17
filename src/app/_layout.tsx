@@ -17,40 +17,41 @@ SplashScreen.setOptions({
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  // setColors();
-
-  const { isRegistered } = useSession();
+  const { isAuthenticated } = useSession();
   SplashScreen.hide();
-  // Use useTheme hook for style context
-  // const colors = getColors();
 
   return (
     <ThemeProvider>
-      <InnerLayout isRegistered={isRegistered} />
+      <InnerLayout isAuthenticated={isAuthenticated} />
     </ThemeProvider>
   );
 }
 
-function InnerLayout({ isRegistered }: { isRegistered: boolean }) {
+function InnerLayout({ isAuthenticated }: { isAuthenticated: boolean }) {
   const { colors } = useTheme();
   const session = useSession();
-  const topic = session.phone.countryCode + session.phone.number;
+  const hasMessagingIdentity = Boolean(
+    session.phone.countryCode && session.phone.number,
+  );
+  const topic = hasMessagingIdentity
+    ? session.phone.countryCode + session.phone.number
+    : "";
 
   // Consolidated hook handles connection + store sync + message listening
-  useMqtt(isRegistered ? topic : "");
+  useMqtt(isAuthenticated && hasMessagingIdentity ? topic : "");
 
   // Open primary database for chat list
   useEffect(() => {
-    if (isRegistered) {
+    if (isAuthenticated) {
       openPrimaryDatabase().catch(e =>
         console.warn('Failed to open primary database', e)
       );
     }
-  }, [isRegistered]);
+  }, [isAuthenticated]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={isRegistered}>
+      <Stack.Protected guard={isAuthenticated}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="chat/[number]" />
         <Stack.Screen
@@ -74,9 +75,8 @@ function InnerLayout({ isRegistered }: { isRegistered: boolean }) {
           }}
         />
       </Stack.Protected>
-      <Stack.Protected guard={!isRegistered}>
+      <Stack.Protected guard={!isAuthenticated}>
         <Stack.Screen name="register/index" />
-        <Stack.Screen name="register/otp" />
       </Stack.Protected>
     </Stack>
   );

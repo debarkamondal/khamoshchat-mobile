@@ -4,23 +4,39 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { Alert } from "react-native";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 
+type PhoneIdentity = {
+  countryCode: string;
+  number: number;
+};
+
+type AuthProvider = "google" | null;
+
 export type Session = {
-  phone: {
-    countryCode: string;
-    number: number;
-  };
-  image: string;
+  phone: PhoneIdentity;
   iKey: Uint8Array;
   preKey: Uint8Array;
   isRegistered: boolean;
-  initSession: (phone: {
-    countryCode: string;
-    number: number;
-  }) => Promise<{ iKey: Uint8Array; preKey: Uint8Array }>;
+  isAuthenticated: boolean;
+  authProvider: AuthProvider;
+  authToken: string | null;
+  userId: string | null;
+  email: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  initSession: (phone: PhoneIdentity) => Promise<{ iKey: Uint8Array; preKey: Uint8Array }>;
   clearSession: () => Promise<void>;
   markSessionRegistered: () => void;
   markSessionUnregistered: () => void;
+  setAuthenticatedUser: (payload: {
+    token: string;
+    userId: string;
+    email: string | null;
+    displayName: string | null;
+    avatarUrl: string | null;
+  }) => void;
+  clearAuthenticatedUser: () => Promise<void>;
 };
+
 const useSession = create(
   persist<Session>(
     (set) => ({
@@ -28,44 +44,65 @@ const useSession = create(
         countryCode: "+91",
         number: 0,
       },
-      image: "",
       isRegistered: false,
+      isAuthenticated: false,
+      authProvider: null,
+      authToken: null,
+      userId: null,
+      email: null,
+      displayName: null,
+      avatarUrl: null,
       iKey: new Uint8Array(),
       preKey: new Uint8Array(),
 
       markSessionUnregistered: () => {
-        set((state) => {
-          return {
-            ...state,
-            isRegistered: false,
-          };
-        });
+        set({ isRegistered: false });
       },
       markSessionRegistered: () => {
-        set((state) => {
-          return {
-            ...state,
-            isRegistered: true,
-          };
+        set({ isRegistered: true });
+      },
+      setAuthenticatedUser: ({ token, userId, email, displayName, avatarUrl }) => {
+        set({
+          isAuthenticated: true,
+          isRegistered: true,
+          authProvider: "google",
+          authToken: token,
+          userId,
+          email,
+          displayName,
+          avatarUrl,
+        });
+      },
+      clearAuthenticatedUser: async () => {
+        set({
+          isAuthenticated: false,
+          isRegistered: false,
+          authProvider: null,
+          authToken: null,
+          userId: null,
+          email: null,
+          displayName: null,
+          avatarUrl: null,
         });
       },
       clearSession: async () => {
-        set((state) => {
-          {
-            return {
-              ...state,
-              opks: [],
-              isRegistered: false,
-              phone: { countryCode: "", number: 0 },
-              iKey: new Uint8Array(),
-              preKey: new Uint8Array(),
-            };
-          }
+        set({
+          isRegistered: false,
+          isAuthenticated: false,
+          authProvider: null,
+          authToken: null,
+          userId: null,
+          email: null,
+          displayName: null,
+          avatarUrl: null,
+          phone: { countryCode: "", number: 0 },
+          iKey: new Uint8Array(),
+          preKey: new Uint8Array(),
         });
       },
       initSession: async (phone) => {
         await deleteItemAsync("opks");
-        const iKey = await LibsignalDezireModule.genSecret()
+        const iKey = await LibsignalDezireModule.genSecret();
         const preKey = await LibsignalDezireModule.genSecret();
         if (!iKey && !preKey) {
           Alert.alert(
@@ -79,15 +116,10 @@ const useSession = create(
             ],
           );
         } else {
-          set((state) => {
-            {
-              return {
-                ...state,
-                phone,
-                iKey,
-                preKey,
-              };
-            }
+          set({
+            phone,
+            iKey,
+            preKey,
           });
         }
         return {
@@ -117,6 +149,13 @@ const useSession = create(
         if (merged.preKey && !(merged.preKey instanceof Uint8Array)) {
           merged.preKey = new Uint8Array(Object.values(merged.preKey));
         }
+
+        merged.isAuthenticated = Boolean(merged.authToken && merged.userId);
+        merged.isRegistered = merged.isRegistered || merged.isAuthenticated;
+        merged.authProvider = merged.authProvider ?? null;
+        merged.email = merged.email ?? null;
+        merged.displayName = merged.displayName ?? null;
+        merged.avatarUrl = merged.avatarUrl ?? null;
 
         return merged;
       },

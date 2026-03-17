@@ -1,15 +1,16 @@
+import { StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import StyledText from "../../components/StyledText";
+import { router } from "expo-router";
+
+import OtpInput from "@/src/components/OtpInput";
+import StyledButton from "@/src/components/StyledButton";
+import StyledText from "@/src/components/StyledText";
 import { useTheme } from "@/src/hooks/useTheme";
 import useSession from "@/src/store/useSession";
-import StyledButton from "@/src/components/StyledButton";
-import OtpInput from "@/src/components/OtpInput";
-import { StyleSheet } from "react-native";
-import { generateOpks } from "@/src/utils/crypto";
-import { router } from "expo-router";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
+import { generateOpks } from "@/src/utils/crypto";
 
-export default function Otp() {
+export default function OtpScreenDraft() {
   const { colors } = useTheme();
   const session = useSession();
 
@@ -17,34 +18,34 @@ export default function Otp() {
     iKey,
     preKey,
     phone,
-    markSessionRegistered: markSesssionRegistered,
+    markSessionRegistered,
   } = useSession();
 
   const submit = async (otp: number) => {
-    if (!preKey || !iKey) return;
-    const pubPreKey = await LibsignalDezireModule.genPubKey(preKey)
+    if (!preKey || !iKey) {
+      return;
+    }
+
+    const pubPreKey = await LibsignalDezireModule.genPubKey(preKey);
     const { signature, vrf } = await LibsignalDezireModule.vxeddsaSign(iKey, pubPreKey);
-    const temp = await LibsignalDezireModule.vxeddsaVerify(await LibsignalDezireModule.genPubKey(iKey), pubPreKey, signature)
-    console.log("sign:", temp)
     const b64Sign = btoa(String.fromCharCode(...signature));
     const b64PreKey = btoa(String.fromCharCode(...pubPreKey));
     const b64Opks = await generateOpks();
-    const body = {
-      phone: phone.countryCode + phone.number,
-      sign: b64Sign,
-      signedPreKey: b64PreKey,
-      // iKey: btoa(String.fromCharCode(...await LibsignalDezireModule.genPubKey(iKey))),
-      vrf: btoa(String.fromCharCode(...vrf)),
-      opks: b64Opks,
-      otp,
 
-    }
     const res = await fetch("https://identity.dkmondal.in/test/register/otp", {
       method: "POST",
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        phone: phone.countryCode + phone.number,
+        sign: b64Sign,
+        signedPreKey: b64PreKey,
+        vrf: btoa(String.fromCharCode(...vrf)),
+        opks: b64Opks,
+        otp,
+      }),
     });
+
     if (res.status === 204) {
-      markSesssionRegistered();
+      markSessionRegistered();
       router.replace("/");
     }
   };
@@ -63,6 +64,7 @@ export default function Otp() {
       fontSize: 14,
     },
   });
+
   return (
     <SafeAreaView style={dynamicStyles.container}>
       <StyledText style={styles.heading}>Enter OTP</StyledText>
@@ -75,7 +77,7 @@ export default function Otp() {
       <OtpInput
         containerStyle={styles.otp}
         length={6}
-        onComplete={(otp) => submit(parseInt(otp))}
+        onComplete={(otp) => submit(parseInt(otp, 10))}
       />
       <StyledButton variant="link" style={styles.link}>
         <StyledText style={dynamicStyles.linkText}>Resend OTP</StyledText>
@@ -94,7 +96,7 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontSize: 28,
-    fontWeight: 800,
+    fontWeight: "800",
   },
   description: {
     fontSize: 14,
@@ -102,7 +104,7 @@ const styles = StyleSheet.create({
   },
   phone: {
     fontSize: 14,
-    fontWeight: 600,
+    fontWeight: "600",
   },
   otp: {
     marginVertical: 32,

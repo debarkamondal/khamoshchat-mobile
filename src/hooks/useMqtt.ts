@@ -82,7 +82,11 @@ const useMqtt = (topic: string) => {
 
                 // 3. Connect (port 8883 for SSL)
                 // Note: The library seems to expect a full broker URL
-                console.log(`****************************************************${process.env.EXPO_PUBLIC_MQTT_URL}`)
+                /**
+                 * Connect to the MQTT broker.
+                 * Currently using default credentials for development/testing.
+                 * In production, these should be handled securely.
+                 */
                 await MqttClient.connect(`${process.env.EXPO_PUBLIC_MQTT_URL}`, "dezire", "test1234");
                 setClient(MqttClient);
 

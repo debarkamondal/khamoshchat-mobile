@@ -1,11 +1,12 @@
+import React, { useEffect, useState } from "react";
 import { FlatList, Platform, Pressable, StyleSheet, View } from "react-native";
-import StyledText from "../components/StyledText";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState, useMemo } from "react";
-import StyledTextInput from "../components/StyledTextInput";
-import Card from "../components/Card";
+import StyledTextInput from "@/src/components/StyledTextInput";
+import Card from "@/src/components/Card";
+import StyledText from "@/src/components/StyledText";
 import { getContacts, SplitContact } from "@/src/utils/helpers/contacts";
+import { useThemedStyles } from "@/src/hooks/useTheme";
 import { router } from "expo-router";
 
 export default function Contacts() {
@@ -20,23 +21,33 @@ export default function Contacts() {
 
   const insets = useSafeAreaInsets();
   
-  const dynamicStyle = useMemo(
-    () => StyleSheet.create({
-      contactList: {
-         paddingBottom: Platform.OS === "ios" ? insets.bottom + 20 : 12,
-      },
-      blurView: {
-         flex: 0,
-         marginTop: Platform.OS === "ios" ? 42 : insets.top || 24,
-         marginHorizontal: Platform.OS === "ios" ? 16 : 12,
-      }
-    }), [insets.bottom, insets.top]
-  );
+  const themedStyles = useThemedStyles((colors) => ({
+    contactList: {
+      paddingBottom: Platform.OS === "ios" ? insets.bottom + 20 : 12,
+    },
+    blurView: {
+      flex: 1,
+      marginTop: Platform.OS === "ios" ? 42 : insets.top || 24,
+      marginHorizontal: Platform.OS === "ios" ? 16 : 12,
+    },
+    phoneNumber: {
+      fontSize: 14,
+      fontWeight: "300" as const,
+      marginVertical: 8,
+      color: colors.onSurfaceVariant,
+    },
+    heading: {
+      fontSize: 36,
+      fontWeight: "600" as const,
+      color: colors.onBackground,
+      zIndex: 5,
+    },
+  }));
 
   return (
-    <SafeAreaView style={dynamicStyle.blurView}>
+    <SafeAreaView style={themedStyles.blurView}>
       <View style={styles.headingView} collapsable={false}>
-        <StyledText style={styles.heading}>Contacts</StyledText>
+        <StyledText style={themedStyles.heading}>Contacts</StyledText>
         <StyledTextInput
           onChangeText={(text) => setSearchTerm(text)}
           style={styles.searchBar}
@@ -47,16 +58,16 @@ export default function Contacts() {
         data={
           searchTerm
             ? contacts?.filter(
-              (contact) =>
-                contact.number.startsWith(searchTerm) ||
-                contact.firstName
-                  .toLowerCase()
-                  .startsWith(searchTerm.toLowerCase()),
-            )
+                (contact) =>
+                  contact.number.startsWith(searchTerm) ||
+                  contact.firstName
+                    .toLowerCase()
+                    .startsWith(searchTerm.toLowerCase()),
+              )
             : contacts
         }
         keyExtractor={(item) => item.id}
-        contentContainerStyle={dynamicStyle.contactList}
+        contentContainerStyle={themedStyles.contactList}
         scrollEnabled={true}
         renderItem={({ item }) => (
           <Card styles={styles.cards}>
@@ -75,7 +86,7 @@ export default function Contacts() {
                   {item.firstName} {item.lastName}
                 </StyledText>
               )}
-              <StyledText style={styles.phoneNumber}>
+              <StyledText style={themedStyles.phoneNumber}>
                 {item.number} ({item.label})
               </StyledText>
             </Pressable>
@@ -85,15 +96,8 @@ export default function Contacts() {
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
-  contactList: {
-    paddingBottom: 12,
-  },
-  phoneNumber: {
-    fontSize: 14,
-    fontWeight: 300,
-    marginVertical: 8,
-  },
   cardContent: {
     flex: 0,
     flexDirection: "column",
@@ -115,10 +119,5 @@ const styles = StyleSheet.create({
   headingView: {
     flex: 0,
     marginTop: 8,
-  },
-  heading: {
-    fontSize: 36,
-    fontWeight: 600,
-    zIndex: 5,
   },
 });

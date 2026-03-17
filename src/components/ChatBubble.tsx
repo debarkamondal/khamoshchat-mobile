@@ -9,7 +9,7 @@ type ChatBubbleProps = {
     message: Message;
 };
 
-const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
+export default function ChatBubble({ message }: ChatBubbleProps) {
     const themedStyles = useThemedStyles((colors) => ({
         sentBubble: {
             alignSelf: 'flex-end',
@@ -82,6 +82,4 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
             </StyledText>
         </View>
     );
-};
-
-export default ChatBubble;
+}

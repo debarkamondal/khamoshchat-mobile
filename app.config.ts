@@ -1,0 +1,94 @@
+import type { ExpoConfig } from "expo/config";
+
+const config: ExpoConfig = {
+  name: "khamoshchat",
+  slug: "khamoshchat",
+  version: "1.0.0",
+  orientation: "portrait",
+  icon: "./src/assets/images/icon.png",
+  scheme: "khamoshchat",
+  userInterfaceStyle: "automatic",
+  ios: {
+    supportsTablet: true,
+    bundleIdentifier: "com.anonymous.khamoshchat",
+  },
+  android: {
+    adaptiveIcon: {
+      backgroundColor: "#E6F4FE",
+      foregroundImage: "./src/assets/images/android-icon-foreground.png",
+      backgroundImage: "./src/assets/images/android-icon-background.png",
+      monochromeImage: "./src/assets/images/android-icon-monochrome.png",
+    },
+    predictiveBackGestureEnabled: false,
+    package: "com.anonymous.khamoshchat",
+    permissions: [
+      "android.permission.READ_CONTACTS",
+      "android.permission.WRITE_CONTACTS",
+    ],
+  },
+  web: {
+    output: "static",
+    favicon: "./src/assets/images/favicon.png",
+  },
+  plugins: [
+    "expo-router",
+    [
+      "expo-contacts",
+      {
+        contactsPermission: "Allow $(PRODUCT_NAME) to access your contacts.",
+      },
+    ],
+    [
+      "expo-secure-store",
+      {
+        configureAndroidBackup: true,
+      },
+    ],
+    [
+      "expo-splash-screen",
+      {
+        image: "./src/assets/images/splash-icon.png",
+        imageWidth: 200,
+        resizeMode: "contain",
+        backgroundColor: "#ffffff",
+        dark: {
+          backgroundColor: "#000000",
+        },
+      },
+    ],
+    [
+      "expo-sqlite",
+      {
+        useSQLCipher: true,
+      },
+    ],
+    "expo-font",
+    "expo-image",
+    "expo-web-browser",
+    [
+      "./plugins/withGoogleAuth",
+      {
+        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? process.env.GOOGLE_ANDROID_CLIENT_ID ?? "",
+        serverClientId: process.env.EXPO_PUBLIC_GOOGLE_SERVER_CLIENT_ID ?? process.env.GOOGLE_SERVER_CLIENT_ID ?? "",
+      },
+    ],
+    "./plugins/withMqttModules",
+  ],
+  experiments: {
+    typedRoutes: true,
+    reactCompiler: true,
+  },
+  extra: {
+    router: {},
+    googleAuth: {
+      androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? process.env.GOOGLE_ANDROID_CLIENT_ID ?? "",
+      serverClientId: process.env.EXPO_PUBLIC_GOOGLE_SERVER_CLIENT_ID ?? process.env.GOOGLE_SERVER_CLIENT_ID ?? "",
+    },
+    eas: {
+      projectId: "11605f69-16d6-472c-85a4-157fb733b573",
+    },
+  },
+  owner: "khamoshi-org",
+};
+
+export default config;

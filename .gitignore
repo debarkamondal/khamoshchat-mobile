@@ -12,10 +12,8 @@ build-*
 
 #modules/libsignal-dezire
 modules/libsignal-dezire/android/build
+modules/google-auth/android/build
 
-#Env files
-.env
-.env.local
 
 # Expo
 .expo/
@@ -57,5 +55,5 @@ app-example
 /android
 
 
-#random folers
+# Random folders
 .vscode/
