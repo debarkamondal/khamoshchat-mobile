@@ -15,7 +15,6 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import useSession from "@/src/store/useSession";
-import useMqttStore from "@/src/store/useMqttStore";
 import {
   initSender,
   encryptMessage,
@@ -49,7 +48,6 @@ export default function Chat() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const session = useSession();
-  const { client } = useMqttStore();
 
   useEffect(() => {
     let isMounted = true;
@@ -111,7 +109,6 @@ export default function Chat() {
           session,
           number,
           message: msg,
-          client,
           encrypt: (plaintext, ad) => encryptMessage(number, plaintext, ad),
           recipientIdentityKey: identityKey
         });
@@ -124,7 +121,6 @@ export default function Chat() {
         session,
         number,
         message: msg,
-        client,
         initSender: (sharedSecret, receiverPub, identityKey) => initSender(number, sharedSecret, receiverPub, identityKey),
         encrypt: (plaintext, ad) => encryptMessage(number, plaintext, ad)
       });

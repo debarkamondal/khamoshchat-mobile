@@ -4,7 +4,7 @@
  */
 
 import { Alert } from 'react-native';
-import { MqttClient } from 'mqtt';
+import useMqttStore from '@/src/store/useMqttStore';
 import { Session } from '@/src/store/useSession';
 import { RatchetEncryptResult } from '@/modules/libsignal-dezire/src/LibsignalDezire.types';
 import LibsignalDezireModule from '@/modules/libsignal-dezire/src/LibsignalDezireModule';
@@ -21,7 +21,6 @@ type SendInitialMessageParams = {
     session: Session;
     number: string;
     message: string;
-    client: MqttClient | undefined;
     initSender: (
         sharedSecret: Uint8Array,
         receiverPub: Uint8Array,
@@ -37,7 +36,6 @@ type SendMessageParams = {
     session: Session;
     number: string;
     message: string;
-    client: MqttClient | undefined;
     encrypt: (
         plaintext: Uint8Array,
         ad?: Uint8Array
@@ -54,7 +52,6 @@ export async function sendInitialMessage({
     session,
     number,
     message,
-    client,
     initSender,
     encrypt,
 }: SendInitialMessageParams): Promise<void> {
@@ -128,13 +125,14 @@ export async function sendInitialMessage({
     };
 
     // 6. Publish and save
-    if (!client) {
-        console.log('No client');
+    const { isConnected } = useMqttStore.getState();
+    if (!isConnected) {
+        console.log('MQTT not connected');
         return;
     }
 
     const senderPhone = session.phone.countryCode + session.phone.number;
-    sendToRecipient(client, senderPhone, number, payload);
+    sendToRecipient(senderPhone, number, payload);
     await saveMessage(number, { content: message, sender_id: 'me' });
 }
 
@@ -145,7 +143,6 @@ export async function sendMessage({
     session,
     number,
     message,
-    client,
     encrypt,
     recipientIdentityKey,
 }: SendMessageParams): Promise<boolean> {
@@ -166,13 +163,14 @@ export async function sendMessage({
         };
 
         // 3. Publish and save
-        if (!client) {
-            console.error('No MQTT client available');
+        const { isConnected } = useMqttStore.getState();
+        if (!isConnected) {
+            console.error('MQTT not connected');
             return false;
         }
 
         const senderPhone = session.phone.countryCode + session.phone.number;
-        sendToRecipient(client, senderPhone, number, payload);
+        sendToRecipient(senderPhone, number, payload);
         await saveMessage(number, { content: message, sender_id: 'me' });
 
         return true;

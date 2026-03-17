@@ -24,6 +24,7 @@
         "android.permission.READ_CONTACTS",
         "android.permission.WRITE_CONTACTS"
       ]
+
     },
     "web": {
       "output": "static",
@@ -63,7 +64,8 @@
       ],
       "expo-font",
       "expo-image",
-      "expo-web-browser"
+      "expo-web-browser",
+      "./plugins/withMqttModules"
     ],
     "experiments": {
       "typedRoutes": true,

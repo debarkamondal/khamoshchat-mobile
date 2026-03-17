@@ -75,7 +75,8 @@ function InnerLayout({ isRegistered }: { isRegistered: boolean }) {
         />
       </Stack.Protected>
       <Stack.Protected guard={!isRegistered}>
-        <Stack.Screen name="register" />
+        <Stack.Screen name="register/index" />
+        <Stack.Screen name="register/otp" />
       </Stack.Protected>
     </Stack>
   );
