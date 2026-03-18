@@ -1,6 +1,9 @@
 {
-  "platforms": ["android", "web"],
+  "platforms": ["android", "ios", "web"],
   "android": {
     "modules": ["expo.modules.googleauth.GoogleAuthModule"]
+  },
+  "ios": {
+    "modules": ["GoogleAuthModule"]
   }
 }

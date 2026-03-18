@@ -69,6 +69,7 @@ const config: ExpoConfig = {
       "./plugins/withGoogleAuth",
       {
         androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? process.env.GOOGLE_ANDROID_CLIENT_ID ?? "",
+        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? process.env.GOOGLE_IOS_CLIENT_ID ?? "",
         serverClientId: process.env.EXPO_PUBLIC_GOOGLE_SERVER_CLIENT_ID ?? process.env.GOOGLE_SERVER_CLIENT_ID ?? "",
       },
     ],
@@ -82,6 +83,7 @@ const config: ExpoConfig = {
     router: {},
     googleAuth: {
       androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? process.env.GOOGLE_ANDROID_CLIENT_ID ?? "",
+      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? process.env.GOOGLE_IOS_CLIENT_ID ?? "",
       serverClientId: process.env.EXPO_PUBLIC_GOOGLE_SERVER_CLIENT_ID ?? process.env.GOOGLE_SERVER_CLIENT_ID ?? "",
     },
     eas: {
