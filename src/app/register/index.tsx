@@ -5,11 +5,9 @@ import { Link, router } from "expo-router";
 import { useThemedStyles } from "@/src/hooks/useTheme";
 import StyledText from "@/src/components/StyledText";
 import { useEffect, useState } from "react";
-import useSession from "@/src/store/useSession";
 import { isGoogleSignInAvailable, GoogleAuthFlowError, startGoogleSignIn } from "@/src/utils/auth/google";
 
 export default function Register() {
-  const { setAuthenticatedUser } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
 
@@ -41,16 +39,24 @@ export default function Register() {
     setIsLoading(true);
     try {
       const user = await startGoogleSignIn();
-      setAuthenticatedUser(user);
-      router.replace("/");
+      router.push({
+        pathname: "/register/verify",
+        params: {
+          token: user.token,
+          userId: user.userId,
+          email: user.email || "",
+          displayName: user.displayName || "",
+          avatarUrl: user.avatarUrl || "",
+        },
+      });
     } catch (error) {
       const authError =
         error instanceof GoogleAuthFlowError
           ? error
           : new GoogleAuthFlowError(
-              "ERR_GOOGLE_AUTH_UNKNOWN",
-              "Something went wrong while signing in with Google.",
-            );
+            "ERR_GOOGLE_AUTH_UNKNOWN",
+            "Something went wrong while signing in with Google.",
+          );
 
       if (authError.code !== "ERR_GOOGLE_AUTH_CANCELLED") {
         Alert.alert("Google sign-in failed", authError.message);

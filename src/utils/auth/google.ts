@@ -1,6 +1,10 @@
 import GoogleAuthModule, {
   GoogleSignInResult,
 } from "@/modules/google-auth";
+import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
+import { generateOpks } from "@/src/utils/crypto/oneTimePreKeys";
+import useSession from "@/src/store/useSession";
+import { toBase64 } from "@/src/utils/helpers/encoding";
 
 export type AuthenticatedUser = {
   token: string;
@@ -63,4 +67,46 @@ export async function startGoogleSignIn(): Promise<AuthenticatedUser> {
     displayName: nativeResult.displayName,
     avatarUrl: nativeResult.avatarUrl,
   };
+}
+
+export async function registerWithGoogleBackend(
+  idToken: string,
+  phoneDetails: { countryCode: string; number: number }
+): Promise<void> {
+  const session = useSession.getState();
+  const { iKey, preKey } = await session.initSession(phoneDetails);
+
+  const pubIKey = await LibsignalDezireModule.genPubKey(iKey);
+  const pubPreKey = await LibsignalDezireModule.genPubKey(preKey);
+  const { signature, vrf } = await LibsignalDezireModule.vxeddsaSign(iKey, pubPreKey);
+
+  const b64IKey = toBase64(pubIKey);
+  const b64Sign = toBase64(signature);
+  const b64PreKey = toBase64(pubPreKey);
+  const b64Vrf = toBase64(vrf);
+  const b64Opks = await generateOpks();
+
+  const payload = {
+    phone: `${phoneDetails.countryCode}${phoneDetails.number}`,
+    iKey: b64IKey,
+    signedPreKey: b64PreKey,
+    sign: b64Sign,
+    vrf: b64Vrf,
+    opks: b64Opks,
+    id_token: idToken,
+  };
+
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+
+  const res = await fetch(`${apiUrl}/register/google_oauth/id_token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to register with Google Backend: HTTP ${res.status}`);
+  }
 }
