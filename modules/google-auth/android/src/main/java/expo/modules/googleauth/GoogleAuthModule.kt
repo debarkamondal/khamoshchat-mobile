@@ -16,27 +16,27 @@ import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
-private const val SERVER_CLIENT_ID_META = "expo.modules.googleauth.GOOGLE_SERVER_CLIENT_ID"
+private const val WEB_CLIENT_ID_META = "expo.modules.googleauth.GOOGLE_WEB_CLIENT_ID"
 
 class GoogleAuthModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("GoogleAuth")
 
     AsyncFunction("isAvailable") {
-      getServerClientIdOrNull() != null
+      getWebClientIdOrNull() != null
     }
 
     AsyncFunction("signIn") Coroutine { ->
       val activity = appContext.currentActivity
         ?: throw GoogleAuthUnavailableException("Google sign-in requires an active Android activity.")
-      val serverClientId = getServerClientIdOrNull()
-        ?: throw GoogleAuthConfigurationException("Missing Google server client ID configuration.")
+      val webClientId = getWebClientIdOrNull()
+        ?: throw GoogleAuthConfigurationException("Missing Google web client ID configuration.")
 
       val credentialManager = CredentialManager.create(activity)
       val googleIdOption = GetGoogleIdOption.Builder()
         .setFilterByAuthorizedAccounts(false)
         .setAutoSelectEnabled(false)
-        .setServerClientId(serverClientId)
+        .setServerClientId(webClientId)
         .setNonce(java.util.UUID.randomUUID().toString())
         .build()
 
@@ -71,14 +71,14 @@ class GoogleAuthModule : Module() {
     }
   }
 
-  private fun getServerClientIdOrNull(): String? {
+  private fun getWebClientIdOrNull(): String? {
     val context = appContext.reactContext ?: return null
     return context
       .applicationContext
       .packageManager
       .getApplicationInfo(context.packageName, android.content.pm.PackageManager.GET_META_DATA)
       .metaData
-      ?.getString(SERVER_CLIENT_ID_META)
+      ?.getString(WEB_CLIENT_ID_META)
       ?.takeIf { it.isNotBlank() }
   }
 

@@ -70,7 +70,7 @@ const config: ExpoConfig = {
       {
         androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? process.env.GOOGLE_ANDROID_CLIENT_ID ?? "",
         iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? process.env.GOOGLE_IOS_CLIENT_ID ?? "",
-        serverClientId: process.env.EXPO_PUBLIC_GOOGLE_SERVER_CLIENT_ID ?? process.env.GOOGLE_SERVER_CLIENT_ID ?? "",
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? process.env.GOOGLE_WEB_CLIENT_ID ?? "",
       },
     ],
     "./plugins/withMqttModules",
@@ -84,7 +84,7 @@ const config: ExpoConfig = {
     googleAuth: {
       androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? process.env.GOOGLE_ANDROID_CLIENT_ID ?? "",
       iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? process.env.GOOGLE_IOS_CLIENT_ID ?? "",
-      serverClientId: process.env.EXPO_PUBLIC_GOOGLE_SERVER_CLIENT_ID ?? process.env.GOOGLE_SERVER_CLIENT_ID ?? "",
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? process.env.GOOGLE_WEB_CLIENT_ID ?? "",
     },
     eas: {
       projectId: "11605f69-16d6-472c-85a4-157fb733b573",

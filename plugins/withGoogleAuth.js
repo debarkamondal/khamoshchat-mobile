@@ -1,6 +1,6 @@
 const { withAndroidManifest, withInfoPlist, withPlugins } = require("@expo/config-plugins");
 
-const SERVER_CLIENT_ID_META = "expo.modules.googleauth.GOOGLE_SERVER_CLIENT_ID";
+const WEB_CLIENT_ID_META = "expo.modules.googleauth.GOOGLE_WEB_CLIENT_ID";
 const ANDROID_CLIENT_ID_META = "expo.modules.googleauth.GOOGLE_ANDROID_CLIENT_ID";
 
 function withAndroidGoogleAuth(config, props) {
@@ -12,12 +12,12 @@ function withAndroidGoogleAuth(config, props) {
       throw new Error("[withGoogleAuth] Android application manifest entry not found.");
     }
 
-    const serverClientId = props.serverClientId || config.extra?.googleAuth?.serverClientId;
     const androidClientId = props.androidClientId || config.extra?.googleAuth?.androidClientId;
+    const webClientId = props.webClientId || config.extra?.googleAuth?.webClientId;
 
     application["meta-data"] = application["meta-data"] || [];
 
-    upsertMetaData(application["meta-data"], SERVER_CLIENT_ID_META, serverClientId || "");
+    upsertMetaData(application["meta-data"], WEB_CLIENT_ID_META, webClientId || "");
     upsertMetaData(application["meta-data"], ANDROID_CLIENT_ID_META, androidClientId || "");
 
     manifestConfig.modResults = androidManifest;
@@ -36,9 +36,10 @@ function withIosGoogleAuth(config, props) {
     // Add GIDClientID for Google Sign-In SDK
     infoConfig.modResults.GIDClientID = iosClientId;
 
-    const serverClientId = props.serverClientId || config.extra?.googleAuth?.serverClientId;
-    if (serverClientId) {
-      infoConfig.modResults.GIDServerClientID = serverClientId;
+    const webClientId = props.webClientId || config.extra?.googleAuth?.webClientId;
+    if (webClientId) {
+      // Set the Web Client ID properly for backend auth
+      infoConfig.modResults.GIDWebClientID = webClientId;
     }
 
     // Add URL scheme for Google Sign-In (reversed client ID)

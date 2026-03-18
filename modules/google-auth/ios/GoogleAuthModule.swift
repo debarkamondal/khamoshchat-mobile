@@ -20,9 +20,9 @@ public class GoogleAuthModule: Module {
         return
       }
       
-      let serverClientId = Bundle.main.object(forInfoDictionaryKey: "GIDServerClientID") as? String
+      let webClientId = Bundle.main.object(forInfoDictionaryKey: "GIDWebClientID") as? String
       
-      let config = GIDConfiguration(clientID: clientId, serverClientID: serverClientId)
+      let config = GIDConfiguration(clientID: clientId, serverClientID: webClientId)
       GIDSignIn.sharedInstance.configuration = config
 
       GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { result, error in
