@@ -66,7 +66,7 @@ const config: ExpoConfig = {
     "expo-image",
     "expo-web-browser",
     [
-      "@dezire/expo-google-native-oauth",
+      "expo-google-native-oauth",
       {
         androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? process.env.GOOGLE_ANDROID_CLIENT_ID ?? "",
         iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? process.env.GOOGLE_IOS_CLIENT_ID ?? "",
@@ -81,11 +81,6 @@ const config: ExpoConfig = {
   },
   extra: {
     router: {},
-    googleAuth: {
-      androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? process.env.GOOGLE_ANDROID_CLIENT_ID ?? "",
-      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? process.env.GOOGLE_IOS_CLIENT_ID ?? "",
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? process.env.GOOGLE_WEB_CLIENT_ID ?? "",
-    },
     eas: {
       projectId: "11605f69-16d6-472c-85a4-157fb733b573",
     },

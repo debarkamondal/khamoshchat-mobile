@@ -1,4 +1,4 @@
-import { signIn as googleSignIn, signOut as googleSignOut, GoogleSignInResult } from "@dezire/expo-google-native-oauth";
+import { signIn as googleSignIn, signOut as googleSignOut, GoogleSignInResult } from "expo-google-native-oauth";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 import { generateOpks } from "@/src/utils/crypto/oneTimePreKeys";
 import useSession from "@/src/store/useSession";
