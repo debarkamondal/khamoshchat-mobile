@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["ExpoGoogleNativeOauthModule"]
+  },
+  "android": {
+    "modules": ["com.dezire.expogooglenativeoauth.ExpoGoogleNativeOauthModule"]
+  }
+}

@@ -1,15 +1,15 @@
 import ExpoModulesCore
 import GoogleSignIn
 
-public class GoogleAuthModule: Module {
+public class ExpoGoogleNativeOauthModule: Module {
   public func definition() -> ModuleDefinition {
-    Name("GoogleAuth")
+    Name("ExpoGoogleNativeOauth")
 
     AsyncFunction("isAvailable") { () -> Bool in
       return true
     }
 
-    AsyncFunction("signIn") { (promise: Promise) in
+    AsyncFunction("signIn") { (options: [String: Any]?, promise: Promise) in
       guard let rootViewController = UIApplication.shared.keyWindow?.rootViewController else {
         promise.reject("ERR_GOOGLE_AUTH_NO_VIEW_CONTROLLER", "Could not find root view controller")
         return
@@ -25,7 +25,9 @@ public class GoogleAuthModule: Module {
       let config = GIDConfiguration(clientID: clientId, serverClientID: webClientId)
       GIDSignIn.sharedInstance.configuration = config
 
-      GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { result, error in
+      let requestedScopes = options?["scopes"] as? [String]
+
+      GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController, hint: nil, additionalScopes: requestedScopes) { result, error in
         if let error = error {
           let code = (error as NSError).code
           if code == GIDSignInError.canceled.rawValue {

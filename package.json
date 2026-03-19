@@ -48,7 +48,8 @@
     "react-native-web": "~0.21.2",
     "react-native-worklets": "0.7.2",
     "uuid": "^13.0.0",
-    "zustand": "^5.0.11"
+    "zustand": "^5.0.11",
+    "@dezire/expo-google-native-oauth": "file:./packages/expo-google-native-oauth"
   },
   "devDependencies": {
     "@types/react": "~19.2.14",

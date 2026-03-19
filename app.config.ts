@@ -66,7 +66,7 @@ const config: ExpoConfig = {
     "expo-image",
     "expo-web-browser",
     [
-      "./plugins/withGoogleAuth",
+      "@dezire/expo-google-native-oauth",
       {
         androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? process.env.GOOGLE_ANDROID_CLIENT_ID ?? "",
         iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? process.env.GOOGLE_IOS_CLIENT_ID ?? "",

@@ -1,4 +1,4 @@
-package expo.modules.googleauth
+package com.dezire.expogooglenativeoauth
 
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
@@ -18,15 +18,15 @@ import expo.modules.kotlin.modules.ModuleDefinition
 
 private const val WEB_CLIENT_ID_META = "expo.modules.googleauth.GOOGLE_WEB_CLIENT_ID"
 
-class GoogleAuthModule : Module() {
+class ExpoGoogleNativeOauthModule : Module() {
   override fun definition() = ModuleDefinition {
-    Name("GoogleAuth")
+    Name("ExpoGoogleNativeOauth")
 
     AsyncFunction("isAvailable") {
       getWebClientIdOrNull() != null
     }
 
-    AsyncFunction("signIn") Coroutine { ->
+    AsyncFunction("signIn") Coroutine { options: Map<String, Any>? ->
       val activity = appContext.currentActivity
         ?: throw GoogleAuthUnavailableException("Google sign-in requires an active Android activity.")
       val webClientId = getWebClientIdOrNull()

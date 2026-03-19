@@ -1,6 +1,4 @@
-import GoogleAuthModule, {
-  GoogleSignInResult,
-} from "@/modules/google-auth";
+import { signIn as googleSignIn, signOut as googleSignOut, GoogleSignInResult } from "@dezire/expo-google-native-oauth";
 import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
 import { generateOpks } from "@/src/utils/crypto/oneTimePreKeys";
 import useSession from "@/src/store/useSession";
@@ -44,24 +42,24 @@ function normalizeError(error: unknown): GoogleAuthFlowError {
 }
 
 export async function isGoogleSignInAvailable(): Promise<boolean> {
-  return GoogleAuthModule.isAvailable();
+  return googleSignIn !== undefined;
 }
 
 export async function signOutFromGoogle(): Promise<void> {
-  await GoogleAuthModule.signOut();
+  await googleSignOut();
 }
 
 export async function startGoogleSignIn(): Promise<AuthenticatedUser> {
   let nativeResult: GoogleSignInResult;
 
   try {
-    nativeResult = await GoogleAuthModule.signIn();
+    nativeResult = await googleSignIn();
   } catch (error) {
     throw normalizeError(error);
   }
 
   return {
-    token: nativeResult.idToken,
+    token: nativeResult.idToken ?? "",
     userId: nativeResult.googleUserId ?? nativeResult.email ?? "unknown",
     email: nativeResult.email,
     displayName: nativeResult.displayName,

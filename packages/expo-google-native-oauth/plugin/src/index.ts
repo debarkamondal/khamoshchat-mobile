@@ -1,15 +1,31 @@
-const { withAndroidManifest, withInfoPlist, withPlugins } = require("@expo/config-plugins");
+import {
+  withAndroidManifest,
+  withInfoPlist,
+  withPlugins,
+  ConfigPlugin,
+} from "@expo/config-plugins";
 
 const WEB_CLIENT_ID_META = "expo.modules.googleauth.GOOGLE_WEB_CLIENT_ID";
 const ANDROID_CLIENT_ID_META = "expo.modules.googleauth.GOOGLE_ANDROID_CLIENT_ID";
 
-function withAndroidGoogleAuth(config, props) {
+export type GoogleAuthPluginProps = {
+  androidClientId: string;
+  iosClientId: string;
+  webClientId?: string;
+};
+
+const withAndroidGoogleAuth: ConfigPlugin<GoogleAuthPluginProps> = (
+  config,
+  props
+) => {
   return withAndroidManifest(config, (manifestConfig) => {
     const androidManifest = manifestConfig.modResults;
     const application = androidManifest.manifest.application?.[0];
 
     if (!application) {
-      throw new Error("[withGoogleAuth] Android application manifest entry not found.");
+      throw new Error(
+        "[withGoogleAuth] Android application manifest entry not found."
+      );
     }
 
     const androidClientId = props.androidClientId || config.extra?.googleAuth?.androidClientId;
@@ -17,15 +33,26 @@ function withAndroidGoogleAuth(config, props) {
 
     application["meta-data"] = application["meta-data"] || [];
 
-    upsertMetaData(application["meta-data"], WEB_CLIENT_ID_META, webClientId || "");
-    upsertMetaData(application["meta-data"], ANDROID_CLIENT_ID_META, androidClientId || "");
+    upsertMetaData(
+      application["meta-data"],
+      WEB_CLIENT_ID_META,
+      webClientId || ""
+    );
+    upsertMetaData(
+      application["meta-data"],
+      ANDROID_CLIENT_ID_META,
+      androidClientId || ""
+    );
 
     manifestConfig.modResults = androidManifest;
     return manifestConfig;
   });
-}
+};
 
-function withIosGoogleAuth(config, props) {
+const withIosGoogleAuth: ConfigPlugin<GoogleAuthPluginProps> = (
+  config,
+  props
+) => {
   return withInfoPlist(config, (infoConfig) => {
     const iosClientId = props.iosClientId || config.extra?.googleAuth?.iosClientId;
 
@@ -37,6 +64,7 @@ function withIosGoogleAuth(config, props) {
     infoConfig.modResults.GIDClientID = iosClientId;
 
     const webClientId = props.webClientId || config.extra?.googleAuth?.webClientId;
+    
     if (webClientId) {
       // Set the Web Client ID properly for backend auth
       infoConfig.modResults.GIDWebClientID = webClientId;
@@ -50,7 +78,7 @@ function withIosGoogleAuth(config, props) {
     }
 
     const existingIndex = infoConfig.modResults.CFBundleURLTypes.findIndex(
-      (type) => type.CFBundleURLSchemes?.includes(reversedClientId)
+      (type: any) => type.CFBundleURLSchemes?.includes(reversedClientId)
     );
 
     if (existingIndex === -1) {
@@ -61,17 +89,21 @@ function withIosGoogleAuth(config, props) {
 
     return infoConfig;
   });
-}
+};
 
-module.exports = function withGoogleAuth(config, props = {}) {
+const withGoogleAuth: ConfigPlugin<GoogleAuthPluginProps> = (config, props) => {
   return withPlugins(config, [
     [withAndroidGoogleAuth, props],
     [withIosGoogleAuth, props],
   ]);
 };
 
-function upsertMetaData(metaDataEntries, name, value) {
-  const existing = metaDataEntries.find((entry) => entry.$["android:name"] === name);
+export default withGoogleAuth;
+
+function upsertMetaData(metaDataEntries: any[], name: string, value: string) {
+  const existing = metaDataEntries.find(
+    (entry) => entry.$["android:name"] === name
+  );
   if (existing) {
     existing.$["android:value"] = value;
     return;

@@ -1,0 +1,53 @@
+{
+  "name": "@dezire/expo-google-native-oauth",
+  "version": "0.1.0",
+  "description": "Expo native module for Google Sign-In on iOS and Android using GIDSignIn and CredentialManager.",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && bun run build:plugin",
+    "watch": "expo-module build",
+    "build:plugin": "tsc -p plugin/tsconfig.json",
+    "clean": "expo-module clean && rm -rf plugin/build",
+    "lint": "expo-module lint",
+    "test": "expo-module test",
+    "prepare": "expo-module prepare",
+    "prepublishOnly": "expo-module prepublishOnly"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "google",
+    "oauth",
+    "sign-in",
+    "google-signin",
+    "expo-google-native-oauth"
+  ],
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "bugs": {
+    "url": "https://github.com/debarkamondal/expo-google-native-oauth/issues"
+  },
+  "author": "Debarka Mondal (debarkamondal)",
+  "license": "MIT",
+  "homepage": "https://github.com/debarkamondal/expo-google-native-oauth#readme",
+  "expo": {
+    "plugin": "./app.plugin.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/react": "~19.1.1",
+    "expo-module-scripts": "^55.0.2",
+    "expo": "^55.0.7",
+    "@expo/config-plugins": "*",
+    "react-native": "0.82.1"
+  },
+  "peerDependencies": {
+    "expo": "*",
+    "@expo/config-plugins": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}
