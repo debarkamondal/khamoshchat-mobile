@@ -19,7 +19,7 @@ const config: ExpoConfig = {
       backgroundImage: "./src/assets/images/android-icon-background.png",
       monochromeImage: "./src/assets/images/android-icon-monochrome.png",
     },
-    predictiveBackGestureEnabled: false,
+    predictiveBackGestureEnabled: true,
     package: "com.anonymous.khamoshchat",
     permissions: [
       "android.permission.READ_CONTACTS",

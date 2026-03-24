@@ -21,7 +21,7 @@ export function publishMessage(
     payload: object
 ): void {
     // Native MQTT client expects message as string
-    MqttClient.publish(topic, JSON.stringify(payload), 0);
+    MqttClient.publish(topic, JSON.stringify(payload), 1);
 }
 
 /**

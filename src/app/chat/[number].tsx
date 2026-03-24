@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Contacts from "expo-contacts";
-import { View, StyleSheet, FlatList, NativeScrollEvent, NativeSyntheticEvent, Pressable } from "react-native";
+import { View, StyleSheet, FlatList, NativeScrollEvent, NativeSyntheticEvent, Pressable, KeyboardAvoidingView, Platform, Keyboard } from "react-native";
 import { sendInitialMessage, sendMessage } from '@/src/utils/messaging';
 import { openChatDatabase, closeChatDatabase, getMessages, subscribeToMessages, Message } from '@/src/utils/storage';
 import ChatBubble from "@/src/components/ChatBubble";
@@ -30,6 +30,23 @@ export default function Chat() {
   const [message, setMessage] = useState<string>("");
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') return;
+
+    const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height + 8);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   const flatListRef = useRef<FlatList<Message>>(null);
 
@@ -172,11 +189,11 @@ export default function Chat() {
 
   // Insets-dependent styles (memoized by insets)
   const messageBarInsetStyle = useMemo(() => ({
-    paddingBottom: insets.bottom,
-  }), [insets.bottom]);
+    paddingBottom: keyboardHeight > 0 && Platform.OS !== 'ios' ? 8 : insets.bottom,
+  }), [insets.bottom, keyboardHeight]);
 
-  return (
-    <SafeAreaView style={themedStyles.container} edges={['top']}>
+  const content = (
+    <>
       <View style={styles.header}>
         <StyledButton onPress={() => router.back()} variant="link">
           <Ionicons
@@ -200,7 +217,7 @@ export default function Chat() {
         renderItem={({ item }) => (
           <ChatBubble message={item} />
         )}
-        contentContainerStyle={{ paddingTop: 100 }} // Space for input bar (top in inverted = bottom visually)
+        contentContainerStyle={{ paddingVertical: 16 }} // Space at edges
         onScroll={onScroll}
         scrollEventThrottle={100}
       />
@@ -218,7 +235,7 @@ export default function Chat() {
         style={StyleSheet.flatten([
           messageBarInsetStyle,
           styles.messageBar,
-          { backgroundColor: colors.background } // Ensure background covers list
+          { backgroundColor: colors.background }
         ])}
       >
         <StyledTextInput
@@ -235,6 +252,24 @@ export default function Chat() {
           <Ionicons name="send" size={24} color={colors.onPrimary as string} />
         </StyledButton>
       </View>
+    </>
+  );
+
+  return (
+    <SafeAreaView style={themedStyles.container} edges={['top']}>
+      {Platform.OS === 'ios' ? (
+        <KeyboardAvoidingView
+          style={themedStyles.container}
+          behavior="padding"
+          keyboardVerticalOffset={0}
+        >
+          {content}
+        </KeyboardAvoidingView>
+      ) : (
+        <View style={[themedStyles.container, { paddingBottom: keyboardHeight }]}>
+          {content}
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -261,11 +296,11 @@ const styles = StyleSheet.create({
   },
   messageBar: {
     flex: 0,
-    position: "absolute",
-    bottom: 0,
     width: '100%', // Constrain width to prevent horizontal overflow
     alignItems: "center",
     flexDirection: "row",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(0,0,0,0.1)', // Optional separation line
   },
   messageInput: {
     borderRadius: 25,

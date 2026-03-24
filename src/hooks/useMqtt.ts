@@ -60,12 +60,17 @@ const useMqtt = (topic: string) => {
                 subscriptions.push(messageSub);
 
                 // 2. Handle Connection/Error Events
-                const connectSub = MqttClient.addListener("onMqttConnected", () => {
+                const connectSub = MqttClient.addListener("onMqttConnected", async () => {
                     console.log(`Connected to MQTT broker for topic: ${topic}`);
                     setConnected(true);
 
                     const topicPath = `/khamoshchat/${encodeURIComponent(topic)}/#`;
-                    MqttClient.subscribe(topicPath, 0);
+                    try {
+                        await MqttClient.subscribe(topicPath, 1);
+                        console.log(`Subscribed to ${topicPath}`);
+                    } catch (e) {
+                        console.error(`Failed to subscribe to ${topicPath}:`, e);
+                    }
                 });
                 subscriptions.push(connectSub);
 
@@ -108,7 +113,7 @@ const useMqtt = (topic: string) => {
             setConnected(false);
             setClient(undefined);
         };
-    }, [topic, session, setClient, setConnected]);
+    }, [topic, session.isRegistered, session.preKey, session.iKey, session.phone, setClient, setConnected]);
 };
 
 export default useMqtt;
