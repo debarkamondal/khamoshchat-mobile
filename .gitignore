@@ -3,6 +3,7 @@
 # dependencies
 node_modules/
 
+modules/expo-native-mqtt/android/build
 #Environment variables
 .env
 .env.local

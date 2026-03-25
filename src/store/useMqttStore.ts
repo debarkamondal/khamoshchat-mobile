@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import MqttClient from "@ecodevstack/react-native-mqtt-client";
+// TODO: switch to npm import once published: import MqttClient from 'expo-native-mqtt';
+import MqttClient from "@/modules/expo-native-mqtt";
 
 export type MqttStore = {
     client: typeof MqttClient | undefined;

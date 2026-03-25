@@ -13,7 +13,6 @@
     "lint": "expo lint"
   },
   "dependencies": {
-    "@ecodevstack/react-native-mqtt-client": "^0.3.2",
     "@expo/vector-icons": "^15.1.1",
     "@react-navigation/bottom-tabs": "^7.15.5",
     "@react-navigation/elements": "^2.9.10",

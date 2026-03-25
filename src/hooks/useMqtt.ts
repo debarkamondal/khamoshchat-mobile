@@ -1,4 +1,5 @@
-import MqttClient from "@ecodevstack/react-native-mqtt-client";
+// TODO: switch to npm import once published: import MqttClient from 'expo-native-mqtt';
+import MqttClient from "@/modules/expo-native-mqtt";
 import { useEffect } from "react";
 import { Alert } from "react-native";
 import useMqttStore from "@/src/store/useMqttStore";
@@ -18,9 +19,9 @@ const useMqtt = (topic: string) => {
         const initMqtt = async () => {
             try {
                 // 1. Handle Messages
-                const messageSub = MqttClient.addListener("onMqttMessageReceived", async (data: { topic: string; message: string }) => {
+                const messageSub = MqttClient.addListener("onMqttMessageReceived", async (data: { topic: string; payload: string }) => {
                     try {
-                        const parsedMessage = JSON.parse(data.message);
+                        const parsedMessage = JSON.parse(data.payload);
                         const payload = parsedMessage as X3DHBundle & { ciphertext: string; header: string };
 
 
@@ -86,13 +87,18 @@ const useMqtt = (topic: string) => {
                 subscriptions.push(errorSub);
 
                 // 3. Connect (port 8883 for SSL)
-                // Note: The library seems to expect a full broker URL
-                /**
-                 * Connect to the MQTT broker.
-                 * Currently using default credentials for development/testing.
-                 * In production, these should be handled securely.
-                 */
-                await MqttClient.connect(`${process.env.EXPO_PUBLIC_MQTT_URL}`, "dezire", "test1234");
+                const clientId = `khamoshchat-${session.phone.countryCode.replace('+', '')}-${session.phone.number}`;
+                await MqttClient.connect(
+                    `${process.env.EXPO_PUBLIC_MQTT_URL}`,
+                    "dezire",
+                    "test1234",
+                    {
+                        clientId,
+                        cleanSession: false,
+                        autoReconnect: true,
+                        reconnectDelay: 5000,
+                    }
+                );
                 setClient(MqttClient);
 
             } catch (error) {
