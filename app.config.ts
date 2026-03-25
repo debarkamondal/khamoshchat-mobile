@@ -73,7 +73,7 @@ const config: ExpoConfig = {
         webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? process.env.GOOGLE_WEB_CLIENT_ID ?? "",
       },
     ],
-    "./plugins/withMqttModules",
+    "expo-native-mqtt",
   ],
   experiments: {
     typedRoutes: true,
