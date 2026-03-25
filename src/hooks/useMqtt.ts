@@ -1,5 +1,5 @@
 // TODO: switch to npm import once published: import MqttClient from 'expo-native-mqtt';
-import MqttClient from "@/modules/expo-native-mqtt";
+import MqttClient from "expo-native-mqtt";
 import { useEffect } from "react";
 import { Alert } from "react-native";
 import useMqttStore from "@/src/store/useMqttStore";

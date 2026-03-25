@@ -4,7 +4,7 @@
  */
 
 // TODO: switch to npm import once published: import MqttClient from 'expo-native-mqtt';
-import MqttClient from '@/modules/expo-native-mqtt';
+import MqttClient from "expo-native-mqtt";
 
 /**
  * Builds an MQTT topic for sending messages.
