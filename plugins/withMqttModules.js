@@ -4,7 +4,7 @@
  * CocoaMQTT depends on MqttCocoaAsyncSocket, which requires :modular_headers => true
  * when building with static frameworks libraries on iOS.
  */
-const { withPodfile, withGradleProperties } = require("@expo/config-plugins");
+const { withPodfile, withAppBuildGradle } = require("@expo/config-plugins");
 
 module.exports = function withMqttModules(config) {
   // 1) iOS podfile update
@@ -22,25 +22,28 @@ module.exports = function withMqttModules(config) {
     return podfileConfig;
   });
 
-  // 2) Android gradle.properties update
-  config = withGradleProperties(config, (propertiesConfig) => {
-    let properties = propertiesConfig.modResults;
+  // 2) Android build.gradle update
+  config = withAppBuildGradle(config, (gradleConfig) => {
+    let buildGradle = gradleConfig.modResults.contents;
 
-    const existingExclude = properties.find(p => p.name === 'android.packagingOptions.excludes');
-    if (existingExclude) {
-      if (!existingExclude.value.includes('**/INDEX.LIST')) {
-        existingExclude.value += ',**/INDEX.LIST';
-      }
-    } else {
-      properties.push({
-        name: 'android.packagingOptions.excludes',
-        value: '**/INDEX.LIST',
-        type: 'property'
-      });
+    const packagingSnippet = `
+    packaging {
+        resources {
+            excludes += "**/INDEX.LIST"
+            excludes += "**/io.netty.versions.properties"
+            excludes += "META-INF/io.netty.versions.properties"
+        }
+    }
+`;
+
+    // Inject right inside the android { block
+    const androidRegex = /(android\s*\{)/;
+    if (androidRegex.test(buildGradle)) {
+      buildGradle = buildGradle.replace(androidRegex, `$1${packagingSnippet}`);
     }
 
-    propertiesConfig.modResults = properties;
-    return propertiesConfig;
+    gradleConfig.modResults.contents = buildGradle;
+    return gradleConfig;
   });
 
   return config;
