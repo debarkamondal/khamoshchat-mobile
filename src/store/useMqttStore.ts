@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import MqttClient from "@ecodevstack/react-native-mqtt-client";
+import MqttClient from "expo-native-mqtt";
 
 export type MqttStore = {
     client: typeof MqttClient | undefined;
