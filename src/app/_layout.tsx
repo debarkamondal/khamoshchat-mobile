@@ -18,7 +18,10 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { isAuthenticated } = useSession();
-  SplashScreen.hide();
+  
+  useEffect(() => {
+    SplashScreen.hideAsync();
+  }, []);
 
   return (
     <ThemeProvider>

@@ -8,7 +8,8 @@ import { X3DHBundle, initReceiver, decryptMessage, getIdentityKey } from "@/src/
 import { receiveInitialMessage, receiveMessage } from "@/src/utils/messaging";
 
 const useMqtt = (topic: string) => {
-    const { setClient, setConnected } = useMqttStore();
+    const setClient = useMqttStore(s => s.setClient);
+    const setConnected = useMqttStore(s => s.setConnected);
     const session = useSession();
 
     useEffect(() => {

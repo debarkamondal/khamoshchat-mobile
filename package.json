@@ -30,7 +30,7 @@
     "expo-haptics": "~55.0.8",
     "expo-image": "~55.0.5",
     "expo-linking": "~55.0.7",
-    "expo-native-mqtt": "git+https://github.com/debarkamondal/expo-native-mqtt.git",
+    "expo-native-mqtt": "git+https://github.com/debarkamondal/expo-native-mqtt.git#1313ec7cfa3904f89b9759d9f4dc2ea281313aa8",
     "expo-router": "~55.0.3",
     "expo-secure-store": "~55.0.8",
     "expo-splash-screen": "~55.0.10",
