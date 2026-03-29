@@ -1,12 +1,17 @@
 import * as SplashScreen from "expo-splash-screen";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
+import { AppState, AppStateStatus, Alert, Platform } from "react-native";
 import useSession from "./../store/useSession";
-import { Platform } from "react-native";
 import { ThemeProvider, useTheme } from "@/src/hooks/useTheme";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
-import useMqtt from "@/src/hooks/useMqtt";
-import { openPrimaryDatabase } from "@/src/utils/storage";
+import useMqtt, { processInboxRetries } from "@/src/hooks/useMqtt";
+import {
+    openPrimaryDatabase,
+    reopenAllDatabases,
+    DatabaseKeyMismatchError,
+    pruneInbox,
+} from "@/src/utils/storage";
 
 // Set the animation options. This is optional.
 SplashScreen.setOptions({
@@ -18,7 +23,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { isAuthenticated } = useSession();
-  
+
   useEffect(() => {
     SplashScreen.hideAsync();
   }, []);
@@ -43,14 +48,43 @@ function InnerLayout({ isAuthenticated }: { isAuthenticated: boolean }) {
   // Consolidated hook handles connection + store sync + message listening
   useMqtt(isAuthenticated && hasMessagingIdentity ? topic : "");
 
-  // Open primary database for chat list
+  // Open primary database on auth, with proper error handling
   useEffect(() => {
-    if (isAuthenticated) {
-      openPrimaryDatabase().catch(e =>
-        console.warn('Failed to open primary database', e)
-      );
-    }
+    if (!isAuthenticated) return;
+
+    openPrimaryDatabase()
+      .then(() => {
+        // Prune stale inbox entries (processed/failed older than 7 days)
+        pruneInbox().catch(e =>
+          console.warn('Failed to prune inbox:', e)
+        );
+      })
+      .catch((e) => {
+        if (e instanceof DatabaseKeyMismatchError) {
+          Alert.alert(
+            "Data Unavailable",
+            "Your chat data could not be decrypted. This can happen after reinstalling the app. " +
+            "Your messages may be unrecoverable.",
+            [{ text: "OK", style: "cancel" }]
+          );
+        } else {
+          console.error('Failed to open primary database:', e);
+        }
+      });
   }, [isAuthenticated]);
+
+  // Re-validate DB connections and retry failed inbox entries on foreground resume
+  useEffect(() => {
+    const handleAppStateChange = async (nextState: AppStateStatus) => {
+      if (nextState === 'active' && isAuthenticated) {
+        await reopenAllDatabases();
+        await processInboxRetries(session);
+      }
+    };
+
+    const sub = AppState.addEventListener('change', handleAppStateChange);
+    return () => sub.remove();
+  }, [isAuthenticated, session]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

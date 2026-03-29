@@ -6,7 +6,7 @@ import { router } from "expo-router";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { View, StyleSheet, Platform, FlatList, Pressable } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { getChatThreads, subscribeToChatList, ChatThread } from "@/src/utils/storage";
+import { getChatThreads, subscribeToChatList, ChatThread, DatabaseKeyMismatchError, StorageError } from "@/src/utils/storage";
 import StyledTextInput from "@/src/components/StyledTextInput";
 
 export default function Index() {
@@ -14,6 +14,8 @@ export default function Index() {
   const { colors } = useTheme();
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [storageError, setStorageError] = useState<string | null>(null);
 
   // Filter threads based on search query
   const filteredThreads = useMemo(() => {
@@ -31,14 +33,38 @@ export default function Index() {
   useEffect(() => {
     let isMounted = true;
 
-    getChatThreads().then(t => {
-      if (isMounted) setThreads(t);
-    });
+    const loadThreads = async () => {
+      try {
+        const t = await getChatThreads();
+        if (isMounted) {
+          setThreads(t);
+          setStorageError(null);
+        }
+      } catch (e) {
+        if (!isMounted) return;
+        if (e instanceof DatabaseKeyMismatchError) {
+          setStorageError(
+            'Chat history could not be decrypted. This can happen after a reinstall.'
+          );
+        } else if (e instanceof StorageError && e.recoverable) {
+          // Transient — retry once after a short delay
+          setTimeout(() => {
+            if (isMounted) loadThreads();
+          }, 1000);
+        } else {
+          setStorageError('Failed to load chats. Please restart the app.');
+        }
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    loadThreads();
 
     const unsubscribe = subscribeToChatList(() => {
-      getChatThreads().then(t => {
-        if (isMounted) setThreads(t);
-      });
+      getChatThreads()
+        .then(t => { if (isMounted) setThreads(t); })
+        .catch(e => console.error('Failed to refresh chat list:', e));
     });
 
     return () => {
@@ -183,16 +209,28 @@ export default function Index() {
     </View>
   ), [themedStyles, colors, searchQuery]);
 
+  const emptyContent = storageError ? (
+    <View style={themedStyles.emptyContent}>
+      <StyledText style={{ color: colors.error, textAlign: 'center', paddingHorizontal: 32 }}>
+        {storageError}
+      </StyledText>
+    </View>
+  ) : isLoading ? (
+    <View style={themedStyles.emptyContent}>
+      <StyledText style={{ color: colors.outline }}>Loading chats...</StyledText>
+    </View>
+  ) : (
+    <View style={themedStyles.emptyContent}>
+      <StyledText style={{ color: colors.outline }}>No conversations yet</StyledText>
+    </View>
+  );
+
   return (
     <SafeAreaView style={themedStyles.container} edges={['top']}>
       {threads.length === 0 ? (
         <View style={themedStyles.emptyContainer}>
           {ListHeader}
-          <View style={themedStyles.emptyContent}>
-            <StyledText style={{ color: colors.outline }}>
-              No conversations yet
-            </StyledText>
-          </View>
+          {emptyContent}
         </View>
       ) : (
         <FlatList
