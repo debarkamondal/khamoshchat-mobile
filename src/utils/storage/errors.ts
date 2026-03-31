@@ -83,3 +83,71 @@ export class DatabaseConnectionError extends StorageError {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Send-side errors (mirrors receive-side error handling)
+// ---------------------------------------------------------------------------
+
+/**
+ * Failed to fetch the recipient's pre-key bundle from the identity server.
+ * IS recoverable — network may be temporarily unavailable.
+ */
+export class BundleFetchError extends StorageError {
+    readonly recipient: string;
+
+    constructor(recipient: string, cause?: unknown) {
+        super(
+            'BUNDLE_FETCH_ERROR',
+            `Failed to fetch pre-key bundle for "${recipient}".`,
+            true
+        );
+        this.name = 'BundleFetchError';
+        this.recipient = recipient;
+        if (cause instanceof Error) {
+            this.stack = this.stack + '\nCaused by: ' + cause.stack;
+        }
+    }
+}
+
+/**
+ * Encryption failed — ratchet may be corrupted or uninitialized.
+ * NOT recoverable for this message — ratchet state may need to be reset.
+ */
+export class EncryptionError extends StorageError {
+    readonly recipient: string;
+
+    constructor(recipient: string, cause?: unknown) {
+        super(
+            'ENCRYPTION_ERROR',
+            `Failed to encrypt message for "${recipient}".`,
+            false
+        );
+        this.name = 'EncryptionError';
+        this.recipient = recipient;
+        if (cause instanceof Error) {
+            this.stack = this.stack + '\nCaused by: ' + cause.stack;
+        }
+    }
+}
+
+/**
+ * Failed to persist message or outbox entry to the database before publish.
+ * IS recoverable — transient DB issue.
+ */
+export class OutboxPersistError extends StorageError {
+    readonly recipient: string;
+
+    constructor(recipient: string, cause?: unknown) {
+        super(
+            'OUTBOX_PERSIST_ERROR',
+            `Failed to save outgoing message for "${recipient}" to the database.`,
+            true
+        );
+        this.name = 'OutboxPersistError';
+        this.recipient = recipient;
+        if (cause instanceof Error) {
+            this.stack = this.stack + '\nCaused by: ' + cause.stack;
+        }
+    }
+}
+

@@ -12,8 +12,10 @@ import {
     getPendingInboxEntries,
     getPendingOutboxEntries,
     markOutboxSent,
+    markOutboxFailed,
     incrementOutboxRetry,
     updateMessageStatusWithAutoOpen,
+    StorageError,
 } from "@/src/utils/storage";
 import { publishMessage } from "@/src/utils/transport/mqtt";
 
@@ -52,8 +54,9 @@ export async function processInboxRetries(session: Session): Promise<void> {
 /**
  * Processes a single outbox entry — attempts MQTT publish.
  * On success: marks 'sent' and updates message status.
- * On failure: increments retry counter (auto-fails after MAX_RETRIES).
- *             If permanently failed, marks the message as 'failed' too.
+ * On failure: distinguishes recoverable vs unrecoverable errors:
+ *   - Recoverable (network/transient): increments retry counter, auto-fails after MAX_RETRIES.
+ *   - Unrecoverable (DB corruption, storage errors): immediately marks as 'failed'.
  */
 async function processOutboxEntry(
     entry: { id: number; chat_id: string; message_id: string; topic: string; payload: string; retry_count: number }
@@ -64,21 +67,35 @@ async function processOutboxEntry(
             await markOutboxSent(entry.id);
             await updateMessageStatusWithAutoOpen(entry.chat_id, entry.message_id, 'sent');
         } else {
+            // Publish returned false — recoverable (network issue)
             await incrementOutboxRetry(entry.id);
-            // Check if this was the last retry (MAX_RETRIES = 5)
             if (entry.retry_count + 1 >= 5) {
                 await updateMessageStatusWithAutoOpen(entry.chat_id, entry.message_id, 'failed');
             }
         }
     } catch (e) {
         console.error(`Failed to process outbox entry ${entry.id}:`, e);
-        await incrementOutboxRetry(entry.id);
-        if (entry.retry_count + 1 >= 5) {
+
+        if (e instanceof StorageError && !e.recoverable) {
+            // Unrecoverable — mark as failed immediately, don't waste retries
+            console.error(`Unrecoverable error for outbox ${entry.id}: ${e.code}`);
             try {
+                await markOutboxFailed(entry.id);
                 await updateMessageStatusWithAutoOpen(entry.chat_id, entry.message_id, 'failed');
             } catch {
                 // Best-effort — DB may be unavailable
             }
+            return;
+        }
+
+        // Recoverable — increment retry counter
+        try {
+            await incrementOutboxRetry(entry.id);
+            if (entry.retry_count + 1 >= 5) {
+                await updateMessageStatusWithAutoOpen(entry.chat_id, entry.message_id, 'failed');
+            }
+        } catch {
+            // Best-effort — DB may be unavailable
         }
     }
 }

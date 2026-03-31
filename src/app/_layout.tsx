@@ -5,12 +5,13 @@ import { AppState, AppStateStatus, Alert, Platform } from "react-native";
 import useSession from "./../store/useSession";
 import { ThemeProvider, useTheme } from "@/src/hooks/useTheme";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
-import useMqtt, { processInboxRetries } from "@/src/hooks/useMqtt";
+import useMqtt, { processInboxRetries, processOutboxRetries } from "@/src/hooks/useMqtt";
 import {
     openPrimaryDatabase,
     reopenAllDatabases,
     DatabaseKeyMismatchError,
     pruneInbox,
+    pruneOutbox,
 } from "@/src/utils/storage";
 
 // Set the animation options. This is optional.
@@ -54,9 +55,12 @@ function InnerLayout({ isAuthenticated }: { isAuthenticated: boolean }) {
 
     openPrimaryDatabase()
       .then(() => {
-        // Prune stale inbox entries (processed/failed older than 7 days)
+        // Prune stale inbox/outbox entries (processed/failed older than 7 days)
         pruneInbox().catch(e =>
           console.warn('Failed to prune inbox:', e)
+        );
+        pruneOutbox().catch(e =>
+          console.warn('Failed to prune outbox:', e)
         );
       })
       .catch((e) => {
@@ -77,8 +81,24 @@ function InnerLayout({ isAuthenticated }: { isAuthenticated: boolean }) {
   useEffect(() => {
     const handleAppStateChange = async (nextState: AppStateStatus) => {
       if (nextState === 'active' && isAuthenticated) {
-        await reopenAllDatabases();
-        await processInboxRetries(session);
+        try {
+          await reopenAllDatabases();
+        } catch (e) {
+          console.error('Failed to reopen databases on resume:', e);
+        }
+
+        // Retry pending inbox/outbox entries — errors are non-fatal
+        try {
+          await processInboxRetries(session);
+        } catch (e) {
+          console.error('Failed to process inbox retries on resume:', e);
+        }
+
+        try {
+          await processOutboxRetries();
+        } catch (e) {
+          console.error('Failed to process outbox retries on resume:', e);
+        }
       }
     };
 

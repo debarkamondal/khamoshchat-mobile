@@ -16,6 +16,9 @@ import {
   Message,
   DatabaseKeyMismatchError,
   StorageError,
+  BundleFetchError,
+  EncryptionError,
+  OutboxPersistError,
 } from '@/src/utils/storage';
 import ChatBubble from "@/src/components/ChatBubble";
 import {
@@ -122,7 +125,7 @@ export default function Chat() {
     };
   }, [number]);
 
-  const handleSendMessage = async (msg: string) => {
+  const handleSendMessage = async (msg: string, attempt = 0) => {
     if (!msg.trim()) return;
     if (dbError) {
       Alert.alert('Cannot Send', 'Chat history is unavailable. Please restart the app.');
@@ -130,8 +133,10 @@ export default function Chat() {
     }
 
     // Clear input immediately — message will be saved to DB with 'pending' status
-    setMessage("");
-    scrollToBottom();
+    if (attempt === 0) {
+      setMessage("");
+      scrollToBottom();
+    }
 
     try {
       // Check if we already have a session with this user
@@ -168,9 +173,38 @@ export default function Chat() {
           encrypt: (plaintext, ad) => encryptMessage(number, plaintext, ad),
         });
       }
-    } catch (e) {
-      console.error('Failed to send message:', e);
-      Alert.alert('Send Failed', 'Your message could not be sent. Please try again.');
+    } catch (error) {
+      if (error instanceof BundleFetchError) {
+        // Recoverable — user is offline or server is unreachable
+        Alert.alert(
+          'Offline',
+          'You must be online to start a new conversation. Please check your connection and try again.',
+          [{ text: 'OK', style: 'cancel' }]
+        );
+      } else if (error instanceof EncryptionError) {
+        // Not recoverable — crypto state may be corrupted
+        console.error('Encryption failed:', error);
+        Alert.alert(
+          'Encryption Error',
+          'Could not encrypt your message. The session may be corrupted.',
+          [{ text: 'OK', style: 'cancel' }]
+        );
+      } else if (error instanceof OutboxPersistError && attempt < 3) {
+        // Recoverable — transient DB error, retry with backoff
+        console.warn(`Outbox persist failed (attempt ${attempt + 1}/3), retrying...`);
+        setTimeout(() => handleSendMessage(msg, attempt + 1), 500 * (attempt + 1));
+      } else if (error instanceof StorageError && error.recoverable && attempt < 3) {
+        // Generic recoverable storage error — retry with backoff
+        console.warn(`Recoverable send error (attempt ${attempt + 1}/3):`, error.code);
+        setTimeout(() => handleSendMessage(msg, attempt + 1), 500 * (attempt + 1));
+      } else {
+        console.error('Failed to send message:', error);
+        Alert.alert(
+          'Send Failed',
+          'Your message could not be sent. Please try again.',
+          [{ text: 'OK', style: 'cancel' }]
+        );
+      }
     }
   };
 

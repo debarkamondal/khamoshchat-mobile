@@ -194,13 +194,27 @@ export async function closePrimaryDatabase(): Promise<void> {
  * Stale handles (process restored by OS) are dropped so they are
  * re-opened on next access.
  *
+ * The native SQLite handle can become null after the OS reclaims memory
+ * while the app is backgrounded. In that state, ANY call on the handle
+ * (including a simple `SELECT 1` health-check) throws a NullPointerException.
+ * We must catch that and force a fresh connection.
+ *
  * Call this in an AppState 'active' listener in the root layout.
  */
 export async function reopenAllDatabases(): Promise<void> {
     // Re-validate primary DB
     if (primaryDb) {
-        const healthy = await isConnectionHealthy(primaryDb);
+        let healthy = false;
+        try {
+            healthy = await isConnectionHealthy(primaryDb);
+        } catch {
+            // Native handle is null — treat as unhealthy
+            healthy = false;
+        }
+
         if (!healthy) {
+            // Try to close the stale handle (best-effort)
+            try { await primaryDb.closeAsync(); } catch { /* already dead */ }
             primaryDb = null;
             try {
                 await openPrimaryDatabase();
@@ -208,12 +222,26 @@ export async function reopenAllDatabases(): Promise<void> {
                 console.error('Failed to reopen primary database after resume:', e);
             }
         }
+    } else {
+        // Primary DB was never opened or was closed — ensure it's available
+        try {
+            await openPrimaryDatabase();
+        } catch (e) {
+            console.error('Failed to open primary database on resume:', e);
+        }
     }
 
     // Re-validate per-chat DBs — drop stale handles; let screens reopen them
     for (const [chatId, db] of activeDatabases.entries()) {
-        const healthy = await isConnectionHealthy(db);
+        let healthy = false;
+        try {
+            healthy = await isConnectionHealthy(db);
+        } catch {
+            healthy = false;
+        }
+
         if (!healthy) {
+            try { await db.closeAsync(); } catch { /* already dead */ }
             activeDatabases.delete(chatId);
         }
     }
