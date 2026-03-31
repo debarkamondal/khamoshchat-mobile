@@ -6,9 +6,21 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Contacts from "expo-contacts";
-import { View, StyleSheet, FlatList, NativeScrollEvent, NativeSyntheticEvent, Pressable, KeyboardAvoidingView, Platform, Keyboard } from "react-native";
+import { View, StyleSheet, FlatList, NativeScrollEvent, NativeSyntheticEvent, Pressable, KeyboardAvoidingView, Platform, Keyboard, Alert } from "react-native";
 import { sendInitialMessage, sendMessage } from '@/src/utils/messaging';
-import { openChatDatabase, closeChatDatabase, getMessages, subscribeToMessages, Message } from '@/src/utils/storage';
+import {
+  openChatDatabase,
+  closeChatDatabase,
+  getMessages,
+  subscribeToMessages,
+  Message,
+  DatabaseKeyMismatchError,
+  StorageError,
+  BundleFetchError,
+  EncryptionError,
+  OutboxPersistError,
+  UserNotFoundError,
+} from '@/src/utils/storage';
 import ChatBubble from "@/src/components/ChatBubble";
 import {
   SafeAreaView,
@@ -31,6 +43,8 @@ export default function Chat() {
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [dbError, setDbError] = useState<string | null>(null);
+  const [isUserNotFound, setIsUserNotFound] = useState(false);
 
   useEffect(() => {
     if (Platform.OS === 'ios') return;
@@ -69,82 +83,136 @@ export default function Chat() {
   useEffect(() => {
     let isMounted = true;
 
-    const initChat = async () => {
+    const initChat = async (attempt = 0) => {
       try {
-        // 1. Open Connection & Keep it open while screen is active
         await openChatDatabase(number);
         if (!isMounted) return;
-        console.log(`DB connection kept open for ${number}`);
 
-        // 2. Initial Fetch (now that DB is open, it won't close it)
         const msgs = await getMessages(number);
-        if (isMounted) setChatMessages(msgs);
+        if (isMounted) {
+          setChatMessages(msgs);
+          setDbError(null);
+        }
       } catch (error) {
-        console.error("Failed to init chat DB:", error);
+        if (!isMounted) return;
+        if (error instanceof DatabaseKeyMismatchError) {
+          setDbError(
+            'Chat history could not be decrypted and may be unrecoverable.'
+          );
+        } else if (error instanceof StorageError && error.recoverable && attempt < 3) {
+          // Transient error — retry with backoff
+          setTimeout(() => initChat(attempt + 1), 500 * (attempt + 1));
+        } else {
+          setDbError('Failed to load chat history. Please try again.');
+          console.error('Failed to init chat DB:', error);
+        }
       }
     };
 
     initChat();
 
-    // 3. Subscribe to updates
+    // Subscribe to live message updates
     const unsubscribe = subscribeToMessages((updatedChatId) => {
       if (updatedChatId === number && isMounted) {
-        getMessages(number).then(setChatMessages);
+        getMessages(number)
+          .then(setChatMessages)
+          .catch(e => console.error('Failed to refresh messages:', e));
       }
     });
 
     return () => {
       isMounted = false;
       unsubscribe();
-      // 4. Close connection when leaving screen
-      closeChatDatabase(number).then(() => console.log(`DB connection closed for ${number}`));
+      closeChatDatabase(number).catch(() => {});
     };
   }, [number]);
 
-  const handleSendMessage = async (msg: string) => {
+  const handleSendMessage = async (msg: string, attempt = 0) => {
+    setIsUserNotFound(false);
     if (!msg.trim()) return;
-
-    // Check if we already have a session with this user
-    let hasSession = await isRatchetInitialized(number);
-    if (!hasSession) {
-      // Try loading from storage
-      await loadRatchetSession(number);
-      hasSession = await isRatchetInitialized(number);
+    if (dbError) {
+      Alert.alert('Cannot Send', 'Chat history is unavailable. Please restart the app.');
+      return;
     }
 
-    if (hasSession) {
-      // Check for identity key integrity
-      const identityKey = await getIdentityKey(number);
+    // Clear input immediately — message will be saved to DB with 'pending' status
+    if (attempt === 0) {
+      setMessage("");
+      scrollToBottom();
+    }
 
-      if (!identityKey) {
-        console.warn("Session broken: missing identity key. Clearing session and retrying as initial message.");
-        await clearSession(number);
-        hasSession = false;
-      } else {
-        // Send subsequent message
-        await sendMessage({
+    try {
+      // Check if we already have a session with this user
+      let hasSession = await isRatchetInitialized(number);
+      if (!hasSession) {
+        await loadRatchetSession(number);
+        hasSession = await isRatchetInitialized(number);
+      }
+
+      if (hasSession) {
+        const identityKey = await getIdentityKey(number);
+        if (!identityKey) {
+          console.warn('Session broken: missing identity key. Clearing session and retrying.');
+          await clearSession(number);
+          hasSession = false;
+        } else {
+          await sendMessage({
+            session,
+            number,
+            message: msg,
+            encrypt: (plaintext, ad) => encryptMessage(number, plaintext, ad),
+            recipientIdentityKey: identityKey,
+          });
+        }
+      }
+
+      if (!hasSession) {
+        await sendInitialMessage({
           session,
           number,
           message: msg,
+          initSender: (sharedSecret, receiverPub, identityKey) =>
+            initSender(number, sharedSecret, receiverPub, identityKey),
           encrypt: (plaintext, ad) => encryptMessage(number, plaintext, ad),
-          recipientIdentityKey: identityKey
         });
       }
+    } catch (error) {
+      if (error instanceof UserNotFoundError) {
+        setIsUserNotFound(true);
+        if (attempt === 0) setMessage(msg); // restore drafted message
+        // TODO: Add ways to invite non-customers to the platform
+      } else if (error instanceof BundleFetchError) {
+        // Recoverable — user is offline or server is unreachable
+        Alert.alert(
+          'Offline',
+          'You must be online to start a new conversation. Please check your connection and try again.',
+          [{ text: 'OK', style: 'cancel' }]
+        );
+      } else if (error instanceof EncryptionError) {
+        // Not recoverable — crypto state may be corrupted
+        console.error('Encryption failed:', error);
+        Alert.alert(
+          'Encryption Error',
+          'Could not encrypt your message. The session may be corrupted.',
+          [{ text: 'OK', style: 'cancel' }]
+        );
+      } else if (error instanceof OutboxPersistError && attempt < 3) {
+        // Recoverable — transient DB error, retry with backoff
+        console.warn(`Outbox persist failed (attempt ${attempt + 1}/3), retrying...`);
+        setTimeout(() => handleSendMessage(msg, attempt + 1), 500 * (attempt + 1));
+      } else if (error instanceof StorageError && error.recoverable && attempt < 3) {
+        // Generic recoverable storage error — retry with backoff
+        console.warn(`Recoverable send error (attempt ${attempt + 1}/3):`, error.code);
+        setTimeout(() => handleSendMessage(msg, attempt + 1), 500 * (attempt + 1));
+      } else {
+        console.error('Failed to send message:', error);
+        Alert.alert(
+          'Send Failed',
+          'Your message could not be sent. Please try again.',
+          [{ text: 'OK', style: 'cancel' }]
+        );
+      }
     }
-
-    if (!hasSession) {
-      // Send initial X3DH message
-      await sendInitialMessage({
-        session,
-        number,
-        message: msg,
-        initSender: (sharedSecret, receiverPub, identityKey) => initSender(number, sharedSecret, receiverPub, identityKey),
-        encrypt: (plaintext, ad) => encryptMessage(number, plaintext, ad)
-      });
-    }
-    setMessage("");
-    // Inverted list auto-shows new items at bottom, just ensure we're scrolled there
-    scrollToBottom();
   };
 
   useEffect(() => {
@@ -208,19 +276,27 @@ export default function Chat() {
         <StyledText style={styles.headerTitle}>{name || number}</StyledText>
       </View>
 
-      <FlatList
-        ref={flatListRef}
-        style={themedStyles.messageContainer}
-        data={[...chatMessages].reverse()}
-        inverted
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <ChatBubble message={item} />
-        )}
-        contentContainerStyle={{ paddingVertical: 16 }} // Space at edges
-        onScroll={onScroll}
-        scrollEventThrottle={100}
-      />
+      {dbError ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+          <StyledText style={{ color: colors.error, textAlign: 'center' }}>
+            {dbError}
+          </StyledText>
+        </View>
+      ) : (
+        <FlatList
+          ref={flatListRef}
+          style={themedStyles.messageContainer}
+          data={[...chatMessages].reverse()}
+          inverted
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <ChatBubble message={item} />
+          )}
+          contentContainerStyle={{ paddingVertical: 16 }}
+          onScroll={onScroll}
+          scrollEventThrottle={100}
+        />
+      )}
 
       {showScrollButton && (
         <Pressable
@@ -229,6 +305,14 @@ export default function Chat() {
         >
           <Ionicons name="chevron-down" size={24} color={colors.onBackground} />
         </Pressable>
+      )}
+      {isUserNotFound && (
+        <View style={{ paddingVertical: 8, paddingHorizontal: 16, alignItems: 'center', backgroundColor: colors.surface }}>
+          <StyledText style={{ color: colors.onSurfaceVariant as string, textAlign: 'center', fontSize: 13 }}>
+            This Contact isn't using KhamoshChat yet.
+          </StyledText>
+          {/* TODO: Add ways to invite non-customers to the platform */}
+        </View>
       )}
 
       <View

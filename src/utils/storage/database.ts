@@ -1,11 +1,16 @@
 /**
  * Database connection management.
- * Handles opening, closing, and migrating SQLite databases.
+ * Handles opening, closing, migrating, and health-checking SQLite databases.
  */
 
 import * as SQLite from 'expo-sqlite';
 import { Paths } from 'expo-file-system';
 import { getOrCreateDatabaseCredentials } from './keys';
+import {
+    DatabaseKeyMismatchError,
+    DatabaseCorruptedError,
+    DatabaseConnectionError,
+} from './errors';
 
 const PRIMARY_CHAT_ID = '__primary__';
 
@@ -16,30 +21,75 @@ const PRIMARY_CHAT_ID = '__primary__';
 const activeDatabases = new Map<string, SQLite.SQLiteDatabase>();
 let primaryDb: SQLite.SQLiteDatabase | null = null;
 
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
 /**
- * Opens a database for a specific chat with encryption.
+ * Applies encryption key and WAL mode to an already-open DB handle.
+ * Verifies the key actually works — SQLCipher does not throw on wrong key,
+ * it silently returns empty results, which causes "missing history" bugs.
+ */
+async function applyKeyAndVerify(
+    db: SQLite.SQLiteDatabase,
+    key: string,
+    chatId: string
+): Promise<void> {
+    await db.execAsync(`PRAGMA key = '${key}';`);
+    await db.execAsync('PRAGMA foreign_keys = ON;');
+    await db.execAsync('PRAGMA journal_mode = WAL;');
+
+    // Verify the key actually decrypted the file.
+    // sqlite_master is always present in a valid/empty DB after correct decryption.
+    try {
+        await db.getFirstAsync<{ count: number }>(
+            'SELECT count(*) as count FROM sqlite_master;'
+        );
+    } catch {
+        await db.closeAsync().catch(() => {});
+        throw new DatabaseKeyMismatchError(chatId);
+    }
+}
+
+/**
+ * Runs a lightweight health-check query on a DB handle.
+ * Returns false if the handle is stale or the connection is closed.
+ */
+async function isConnectionHealthy(db: SQLite.SQLiteDatabase): Promise<boolean> {
+    try {
+        await db.getFirstAsync('SELECT 1;');
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Per-chat databases
+// ---------------------------------------------------------------------------
+
+/**
+ * Opens a per-chat database with encryption.
+ * Safe to call multiple times — returns the cached connection.
+ *
+ * @throws DatabaseKeyMismatchError  — PRAGMA key does not match the DB file
+ * @throws DatabaseCorruptedError    — DB file is unreadable
  */
 export async function openChatDatabase(chatId: string): Promise<SQLite.SQLiteDatabase> {
     if (activeDatabases.has(chatId)) {
         return activeDatabases.get(chatId)!;
     }
 
-    // Retrieve encryption key and UUID-based database ID
     const { key, dbId } = await getOrCreateDatabaseCredentials(chatId);
 
-    // Use UUID as filename to obfuscate user info
-    const db = await SQLite.openDatabaseAsync(`${dbId}.db`, {}, Paths.document.uri);
+    let db: SQLite.SQLiteDatabase;
+    try {
+        db = await SQLite.openDatabaseAsync(`${dbId}.db`, {}, Paths.document.uri);
+    } catch (e) {
+        throw new DatabaseCorruptedError(chatId, e);
+    }
 
-    // Apply Encryption
-    await db.execAsync(`PRAGMA key = '${key}';`);
-
-    // Ensure Foreign Keys are ON
-    await db.execAsync('PRAGMA foreign_keys = ON;');
-
-    // Enable WAL mode for better concurrent read/write performance
-    await db.execAsync('PRAGMA journal_mode = WAL;');
-
-    // Apply schema migration if needed
+    await applyKeyAndVerify(db, key, chatId);
     await migrateDatabase(db);
 
     activeDatabases.set(chatId, db);
@@ -63,8 +113,34 @@ export async function closeChatDatabase(chatId: string): Promise<void> {
 }
 
 /**
+ * Checks if a database connection is already open for a chat.
+ */
+export function isDatabaseOpen(chatId: string): boolean {
+    return activeDatabases.has(chatId);
+}
+
+/**
+ * Returns the cached DB for a chat, or throws DatabaseConnectionError if not open.
+ * Use this in functions that REQUIRE callers to manage the DB lifecycle.
+ */
+export function requireChatDatabase(chatId: string): SQLite.SQLiteDatabase {
+    const db = activeDatabases.get(chatId);
+    if (!db) {
+        throw new DatabaseConnectionError(chatId);
+    }
+    return db;
+}
+
+// ---------------------------------------------------------------------------
+// Primary database
+// ---------------------------------------------------------------------------
+
+/**
  * Opens the primary database with encryption and WAL mode.
  * Safe to call multiple times — returns the cached connection.
+ *
+ * @throws DatabaseKeyMismatchError  — PRAGMA key does not match the DB file
+ * @throws DatabaseCorruptedError    — DB file is unreadable
  */
 export async function openPrimaryDatabase(): Promise<SQLite.SQLiteDatabase> {
     if (primaryDb) {
@@ -72,12 +148,15 @@ export async function openPrimaryDatabase(): Promise<SQLite.SQLiteDatabase> {
     }
 
     const { key, dbId } = await getOrCreateDatabaseCredentials(PRIMARY_CHAT_ID);
-    const db = await SQLite.openDatabaseAsync(`${dbId}.db`, {}, Paths.document.uri);
 
-    await db.execAsync(`PRAGMA key = '${key}';`);
-    await db.execAsync('PRAGMA foreign_keys = ON;');
-    await db.execAsync('PRAGMA journal_mode = WAL;');
+    let db: SQLite.SQLiteDatabase;
+    try {
+        db = await SQLite.openDatabaseAsync(`${dbId}.db`, {}, Paths.document.uri);
+    } catch (e) {
+        throw new DatabaseCorruptedError(PRIMARY_CHAT_ID, e);
+    }
 
+    await applyKeyAndVerify(db, key, PRIMARY_CHAT_ID);
     await migratePrimaryDatabase(db);
 
     primaryDb = db;
@@ -106,15 +185,74 @@ export async function closePrimaryDatabase(): Promise<void> {
     }
 }
 
-/**
- * Checks if a database connection is already open for a chat.
- */
-export function isDatabaseOpen(chatId: string): boolean {
-    return activeDatabases.has(chatId);
-}
+// ---------------------------------------------------------------------------
+// Health management (AppState resume)
+// ---------------------------------------------------------------------------
 
 /**
- * Schema migration for the database.
+ * Re-validates all open database connections after the app resumes.
+ * Stale handles (process restored by OS) are dropped so they are
+ * re-opened on next access.
+ *
+ * The native SQLite handle can become null after the OS reclaims memory
+ * while the app is backgrounded. In that state, ANY call on the handle
+ * (including a simple `SELECT 1` health-check) throws a NullPointerException.
+ * We must catch that and force a fresh connection.
+ *
+ * Call this in an AppState 'active' listener in the root layout.
+ */
+export async function reopenAllDatabases(): Promise<void> {
+    // Re-validate primary DB
+    if (primaryDb) {
+        let healthy = false;
+        try {
+            healthy = await isConnectionHealthy(primaryDb);
+        } catch {
+            // Native handle is null — treat as unhealthy
+            healthy = false;
+        }
+
+        if (!healthy) {
+            // Try to close the stale handle (best-effort)
+            try { await primaryDb.closeAsync(); } catch { /* already dead */ }
+            primaryDb = null;
+            try {
+                await openPrimaryDatabase();
+            } catch (e) {
+                console.error('Failed to reopen primary database after resume:', e);
+            }
+        }
+    } else {
+        // Primary DB was never opened or was closed — ensure it's available
+        try {
+            await openPrimaryDatabase();
+        } catch (e) {
+            console.error('Failed to open primary database on resume:', e);
+        }
+    }
+
+    // Re-validate per-chat DBs — drop stale handles; let screens reopen them
+    for (const [chatId, db] of activeDatabases.entries()) {
+        let healthy = false;
+        try {
+            healthy = await isConnectionHealthy(db);
+        } catch {
+            healthy = false;
+        }
+
+        if (!healthy) {
+            try { await db.closeAsync(); } catch { /* already dead */ }
+            activeDatabases.delete(chatId);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Migrations
+// ---------------------------------------------------------------------------
+
+/**
+ * Schema migration for per-chat databases.
  */
 async function migrateDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
     const DATABASE_VERSION = 2;
@@ -134,7 +272,7 @@ async function migrateDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
                 created_at INTEGER NOT NULL,
                 status TEXT DEFAULT 'sent'
             );
-            
+
             CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
         `);
     }
@@ -156,7 +294,7 @@ async function migrateDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
  * Schema migration for the primary database.
  */
 async function migratePrimaryDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
-    const DATABASE_VERSION = 1;
+    const DATABASE_VERSION = 3;
     const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
     const currentVersion = result?.user_version ?? 0;
 
@@ -176,6 +314,40 @@ async function migratePrimaryDatabase(db: SQLite.SQLiteDatabase): Promise<void> 
             );
 
             CREATE INDEX IF NOT EXISTS idx_chats_updated ON chats(updated_at DESC);
+        `);
+    }
+
+    if (currentVersion < 2) {
+        await db.execAsync(`
+            CREATE TABLE IF NOT EXISTS inbox (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                topic       TEXT NOT NULL,
+                payload     TEXT NOT NULL,
+                received_at INTEGER NOT NULL,
+                status      TEXT NOT NULL DEFAULT 'pending',
+                retry_count INTEGER NOT NULL DEFAULT 0,
+                processed_at INTEGER
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_inbox_status ON inbox(status);
+        `);
+    }
+
+    if (currentVersion < 3) {
+        await db.execAsync(`
+            CREATE TABLE IF NOT EXISTS outbox (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_id      TEXT NOT NULL,
+                message_id   TEXT NOT NULL,
+                payload      TEXT NOT NULL,
+                topic        TEXT NOT NULL,
+                created_at   INTEGER NOT NULL,
+                status       TEXT NOT NULL DEFAULT 'pending',
+                retry_count  INTEGER NOT NULL DEFAULT 0,
+                sent_at      INTEGER
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_outbox_status ON outbox(status);
         `);
     }
 
