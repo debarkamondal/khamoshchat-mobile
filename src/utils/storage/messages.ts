@@ -21,7 +21,7 @@ export interface Message {
     content: string;
     sender_id: string;
     created_at: number;
-    status: 'sent' | 'delivered' | 'read';
+    status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
 }
 
 /**
@@ -71,8 +71,8 @@ export async function getMessages(chatId: string): Promise<Message[]> {
  */
 export async function saveMessage(
     chatId: string,
-    message: { content: string; sender_id: string }
-): Promise<void> {
+    message: { content: string; sender_id: string; status?: Message['status'] }
+): Promise<string> {
     const db = requireChatDatabase(chatId);
     const id = generateMessageId();
     const created_at = Date.now();
@@ -83,12 +83,61 @@ export async function saveMessage(
         message.content,
         message.sender_id,
         created_at,
-        'sent'
+        message.status ?? 'sent'
     );
 
     // Update chat list in primary DB
     await upsertChatThread(chatId, message.content);
     notifyListeners(chatId);
+    return id;
+}
+
+/**
+ * Updates the status of a message in the per-chat database.
+ * REQUIRES the chat DB to already be open.
+ *
+ * @throws DatabaseConnectionError if the DB is not open
+ */
+export async function updateMessageStatus(
+    chatId: string,
+    messageId: string,
+    status: Message['status']
+): Promise<void> {
+    const db = requireChatDatabase(chatId);
+    await db.runAsync(
+        'UPDATE messages SET status = ? WHERE id = ?',
+        status,
+        messageId
+    );
+    notifyListeners(chatId);
+}
+
+/**
+ * Updates a message status, opening/closing the DB itself.
+ * Use in background contexts (outbox retry) where the chat screen
+ * may not be managing the DB lifecycle.
+ */
+export async function updateMessageStatusWithAutoOpen(
+    chatId: string,
+    messageId: string,
+    status: Message['status']
+): Promise<void> {
+    const wasAlreadyOpen = isDatabaseOpen(chatId);
+    await openChatDatabase(chatId);
+
+    try {
+        const db = requireChatDatabase(chatId);
+        await db.runAsync(
+            'UPDATE messages SET status = ? WHERE id = ?',
+            status,
+            messageId
+        );
+        notifyListeners(chatId);
+    } finally {
+        if (!wasAlreadyOpen) {
+            await closeChatDatabase(chatId);
+        }
+    }
 }
 
 /**
@@ -100,8 +149,8 @@ export async function saveMessage(
  */
 export async function saveMessageWithAutoOpen(
     chatId: string,
-    message: { content: string; sender_id: string }
-): Promise<void> {
+    message: { content: string; sender_id: string; status?: Message['status'] }
+): Promise<string> {
     const wasAlreadyOpen = isDatabaseOpen(chatId);
     const db = await openChatDatabase(chatId);
 
@@ -115,11 +164,12 @@ export async function saveMessageWithAutoOpen(
             message.content,
             message.sender_id,
             created_at,
-            'sent'
+            message.status ?? 'sent'
         );
 
         await upsertChatThread(chatId, message.content);
         notifyListeners(chatId);
+        return id;
     } finally {
         // Only close if we opened it ourselves — don't close a DB the chat screen is using
         if (!wasAlreadyOpen) {

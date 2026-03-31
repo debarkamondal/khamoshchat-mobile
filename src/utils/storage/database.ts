@@ -266,7 +266,7 @@ async function migrateDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
  * Schema migration for the primary database.
  */
 async function migratePrimaryDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
-    const DATABASE_VERSION = 2;
+    const DATABASE_VERSION = 3;
     const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
     const currentVersion = result?.user_version ?? 0;
 
@@ -302,6 +302,24 @@ async function migratePrimaryDatabase(db: SQLite.SQLiteDatabase): Promise<void> 
             );
 
             CREATE INDEX IF NOT EXISTS idx_inbox_status ON inbox(status);
+        `);
+    }
+
+    if (currentVersion < 3) {
+        await db.execAsync(`
+            CREATE TABLE IF NOT EXISTS outbox (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_id      TEXT NOT NULL,
+                message_id   TEXT NOT NULL,
+                payload      TEXT NOT NULL,
+                topic        TEXT NOT NULL,
+                created_at   INTEGER NOT NULL,
+                status       TEXT NOT NULL DEFAULT 'pending',
+                retry_count  INTEGER NOT NULL DEFAULT 0,
+                sent_at      INTEGER
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_outbox_status ON outbox(status);
         `);
     }
 

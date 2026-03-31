@@ -10,7 +10,12 @@ import {
     markInboxProcessed,
     incrementInboxRetry,
     getPendingInboxEntries,
+    getPendingOutboxEntries,
+    markOutboxSent,
+    incrementOutboxRetry,
+    updateMessageStatusWithAutoOpen,
 } from "@/src/utils/storage";
+import { publishMessage } from "@/src/utils/transport/mqtt";
 
 /**
  * Processes a single inbox entry.
@@ -41,6 +46,58 @@ export async function processInboxRetries(session: Session): Promise<void> {
         }
     } catch (e) {
         console.error('Failed to process inbox retries:', e);
+    }
+}
+
+/**
+ * Processes a single outbox entry — attempts MQTT publish.
+ * On success: marks 'sent' and updates message status.
+ * On failure: increments retry counter (auto-fails after MAX_RETRIES).
+ *             If permanently failed, marks the message as 'failed' too.
+ */
+async function processOutboxEntry(
+    entry: { id: number; chat_id: string; message_id: string; topic: string; payload: string; retry_count: number }
+): Promise<void> {
+    try {
+        const success = await publishMessage(entry.topic, entry.payload);
+        if (success) {
+            await markOutboxSent(entry.id);
+            await updateMessageStatusWithAutoOpen(entry.chat_id, entry.message_id, 'sent');
+        } else {
+            await incrementOutboxRetry(entry.id);
+            // Check if this was the last retry (MAX_RETRIES = 5)
+            if (entry.retry_count + 1 >= 5) {
+                await updateMessageStatusWithAutoOpen(entry.chat_id, entry.message_id, 'failed');
+            }
+        }
+    } catch (e) {
+        console.error(`Failed to process outbox entry ${entry.id}:`, e);
+        await incrementOutboxRetry(entry.id);
+        if (entry.retry_count + 1 >= 5) {
+            try {
+                await updateMessageStatusWithAutoOpen(entry.chat_id, entry.message_id, 'failed');
+            } catch {
+                // Best-effort — DB may be unavailable
+            }
+        }
+    }
+}
+
+/**
+ * Retries all pending outbox entries.
+ * Call this when MQTT connection is established/restored.
+ */
+export async function processOutboxRetries(): Promise<void> {
+    try {
+        const pending = await getPendingOutboxEntries();
+        if (pending.length > 0) {
+            console.log(`Processing ${pending.length} pending outbox entries...`);
+        }
+        for (const entry of pending) {
+            await processOutboxEntry(entry);
+        }
+    } catch (e) {
+        console.error('Failed to process outbox retries:', e);
     }
 }
 
@@ -93,6 +150,9 @@ const useMqtt = (topic: string) => {
                     } catch (e) {
                         console.error(`Failed to subscribe to ${topicPath}:`, e);
                     }
+
+                    // Flush pending outbox entries on reconnect
+                    await processOutboxRetries();
                 });
                 subscriptions.push(connectSub);
 

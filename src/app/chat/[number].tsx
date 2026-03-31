@@ -129,6 +129,10 @@ export default function Chat() {
       return;
     }
 
+    // Clear input immediately — message will be saved to DB with 'pending' status
+    setMessage("");
+    scrollToBottom();
+
     try {
       // Check if we already have a session with this user
       let hasSession = await isRatchetInitialized(number);
@@ -164,9 +168,6 @@ export default function Chat() {
           encrypt: (plaintext, ad) => encryptMessage(number, plaintext, ad),
         });
       }
-
-      setMessage("");
-      scrollToBottom();
     } catch (e) {
       console.error('Failed to send message:', e);
       Alert.alert('Send Failed', 'Your message could not be sent. Please try again.');

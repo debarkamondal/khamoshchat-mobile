@@ -16,24 +16,32 @@ export function buildTopic(sender: string, recipient: string): string {
 
 /**
  * Publishes a message payload to an MQTT topic.
+ * Returns true if publish succeeded, false on failure.
  */
-export function publishMessage(
+export async function publishMessage(
     topic: string,
-    payload: object
-): void {
-    // Native MQTT client expects message as string
-    MqttClient.publish(topic, JSON.stringify(payload), 1);
+    payload: string
+): Promise<boolean> {
+    try {
+        await MqttClient.publish(topic, payload, 1);
+        return true;
+    } catch (e) {
+        console.error('MQTT publish failed:', e);
+        return false;
+    }
 }
 
 /**
  * Publishes a message to a recipient.
  * Convenience function that combines topic building and publishing.
+ * Returns true if publish succeeded, false on failure.
  */
-export function sendToRecipient(
+export async function sendToRecipient(
     sender: string,
     recipient: string,
     payload: object
-): void {
+): Promise<boolean> {
     const topic = buildTopic(sender, recipient);
-    publishMessage(topic, payload);
+    return publishMessage(topic, JSON.stringify(payload));
 }
+
