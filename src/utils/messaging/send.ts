@@ -25,7 +25,7 @@ import LibsignalDezireModule from '@/modules/libsignal-dezire/src/LibsignalDezir
 import { toBase64, fromBase64, toBytes } from '../helpers/encoding';
 import { saveMessage, updateMessageStatus } from '../storage/messages';
 import { saveToOutbox, markOutboxSent, incrementOutboxRetry } from '../storage/outbox';
-import { BundleFetchError, EncryptionError, OutboxPersistError } from '../storage/errors';
+import { BundleFetchError, EncryptionError, OutboxPersistError, UserNotFoundError } from '../storage/errors';
 import { buildTopic, publishMessage } from '../transport/mqtt';
 import { generateAuthParams, x3dhInitiator, PreKeyBundle } from '../crypto/x3dh';
 import { constructSenderAD } from '../crypto/associatedData';
@@ -95,6 +95,7 @@ async function attemptPublish(
  * Requires online connectivity — X3DH needs the recipient's pre-key bundle.
  *
  * @throws BundleFetchError    — could not fetch pre-key bundle (recoverable)
+ * @throws UserNotFoundError   — the user is not registered (not recoverable)
  * @throws EncryptionError     — encryption failed (not recoverable)
  * @throws OutboxPersistError  — could not save to DB (recoverable)
  */
@@ -130,6 +131,9 @@ export async function sendInitialMessage({
         });
 
         if (!res.ok) {
+            if (res.status === 404) {
+                throw new UserNotFoundError(number);
+            }
             const text = await res.text();
             console.error('Bundle fetch HTTP error:', res.status, text);
             throw new BundleFetchError(number);
@@ -145,7 +149,7 @@ export async function sendInitialMessage({
             opk: rawBundle.opk,
         };
     } catch (e) {
-        if (e instanceof BundleFetchError) throw e;
+        if (e instanceof UserNotFoundError || e instanceof BundleFetchError) throw e;
         throw new BundleFetchError(number, e);
     }
 

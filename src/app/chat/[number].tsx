@@ -19,6 +19,7 @@ import {
   BundleFetchError,
   EncryptionError,
   OutboxPersistError,
+  UserNotFoundError,
 } from '@/src/utils/storage';
 import ChatBubble from "@/src/components/ChatBubble";
 import {
@@ -43,6 +44,7 @@ export default function Chat() {
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [dbError, setDbError] = useState<string | null>(null);
+  const [isUserNotFound, setIsUserNotFound] = useState(false);
 
   useEffect(() => {
     if (Platform.OS === 'ios') return;
@@ -126,6 +128,7 @@ export default function Chat() {
   }, [number]);
 
   const handleSendMessage = async (msg: string, attempt = 0) => {
+    setIsUserNotFound(false);
     if (!msg.trim()) return;
     if (dbError) {
       Alert.alert('Cannot Send', 'Chat history is unavailable. Please restart the app.');
@@ -174,7 +177,11 @@ export default function Chat() {
         });
       }
     } catch (error) {
-      if (error instanceof BundleFetchError) {
+      if (error instanceof UserNotFoundError) {
+        setIsUserNotFound(true);
+        if (attempt === 0) setMessage(msg); // restore drafted message
+        // TODO: Add ways to invite non-customers to the platform
+      } else if (error instanceof BundleFetchError) {
         // Recoverable — user is offline or server is unreachable
         Alert.alert(
           'Offline',
@@ -298,6 +305,14 @@ export default function Chat() {
         >
           <Ionicons name="chevron-down" size={24} color={colors.onBackground} />
         </Pressable>
+      )}
+      {isUserNotFound && (
+        <View style={{ paddingVertical: 8, paddingHorizontal: 16, alignItems: 'center', backgroundColor: colors.surface }}>
+          <StyledText style={{ color: colors.onSurfaceVariant as string, textAlign: 'center', fontSize: 13 }}>
+            This Contact isn't using KhamoshChat yet.
+          </StyledText>
+          {/* TODO: Add ways to invite non-customers to the platform */}
+        </View>
       )}
 
       <View

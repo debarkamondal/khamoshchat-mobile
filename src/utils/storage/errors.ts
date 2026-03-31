@@ -84,9 +84,6 @@ export class DatabaseConnectionError extends StorageError {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Send-side errors (mirrors receive-side error handling)
-// ---------------------------------------------------------------------------
 
 /**
  * Failed to fetch the recipient's pre-key bundle from the identity server.
@@ -102,6 +99,27 @@ export class BundleFetchError extends StorageError {
             true
         );
         this.name = 'BundleFetchError';
+        this.recipient = recipient;
+        if (cause instanceof Error) {
+            this.stack = this.stack + '\nCaused by: ' + cause.stack;
+        }
+    }
+}
+
+/**
+ * The recipient is not registered on KhamoshChat (server returned 404 for bundle).
+ * NOT recoverable — user must be invited or register.
+ */
+export class UserNotFoundError extends StorageError {
+    readonly recipient: string;
+
+    constructor(recipient: string, cause?: unknown) {
+        super(
+            'USER_NOT_FOUND',
+            `Requested user "${recipient}" is not using KhamoshChat.`,
+            false
+        );
+        this.name = 'UserNotFoundError';
         this.recipient = recipient;
         if (cause instanceof Error) {
             this.stack = this.stack + '\nCaused by: ' + cause.stack;

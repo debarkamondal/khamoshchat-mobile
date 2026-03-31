@@ -14,7 +14,7 @@ export default function ChatBubble({ message }: ChatBubbleProps) {
     const themedStyles = useThemedStyles((colors) => ({
         sentBubble: {
             alignSelf: 'flex-end',
-            backgroundColor: colors.primary,
+            backgroundColor: colors.onPrimary,
             borderRadius: 20,
             borderCurve: 'continuous',
             borderBottomRightRadius: 4,
@@ -61,21 +61,21 @@ export default function ChatBubble({ message }: ChatBubbleProps) {
             flexDirection: 'row',
             alignItems: 'center',
             gap: 3,
+            marginBottom: -4,
+            marginRight: -6,
+            marginLeft: 4,
         },
         timestampSent: {
             color: colors.onSurfaceVariant,
             fontSize: 10,
-            marginBottom: 2,
         },
         timestampReceived: {
             color: colors.onSurfaceVariant,
             fontSize: 10,
-            marginBottom: 2,
             marginLeft: 'auto',
             textAlign: 'right',
         },
         failedIndicator: {
-            marginBottom: 2,
         },
     }));
 
