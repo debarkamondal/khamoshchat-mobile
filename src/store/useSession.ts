@@ -23,6 +23,10 @@ export type Session = {
   email: string | null;
   displayName: string | null;
   avatarUrl: string | null;
+  pushToken: string | null;
+  pushTokenRegistered: boolean;
+  setPushToken: (token: string | null) => void;
+  setPushTokenRegistered: (registered: boolean) => void;
   initSession: (phone: PhoneIdentity) => Promise<{ iKey: Uint8Array; preKey: Uint8Array }>;
   clearSession: () => Promise<void>;
   markSessionRegistered: () => void;
@@ -52,9 +56,17 @@ const useSession = create(
       email: null,
       displayName: null,
       avatarUrl: null,
+      pushToken: null,
+      pushTokenRegistered: false,
       iKey: new Uint8Array(),
       preKey: new Uint8Array(),
 
+      setPushToken: (token) => {
+        set({ pushToken: token });
+      },
+      setPushTokenRegistered: (registered) => {
+        set({ pushTokenRegistered: registered });
+      },
       markSessionUnregistered: () => {
         set({ isRegistered: false });
       },
@@ -95,6 +107,7 @@ const useSession = create(
           email: null,
           displayName: null,
           avatarUrl: null,
+          pushTokenRegistered: false,
           phone: { countryCode: "", number: 0 },
           iKey: new Uint8Array(),
           preKey: new Uint8Array(),
@@ -156,6 +169,8 @@ const useSession = create(
         merged.email = merged.email ?? null;
         merged.displayName = merged.displayName ?? null;
         merged.avatarUrl = merged.avatarUrl ?? null;
+        merged.pushToken = merged.pushToken ?? null;
+        merged.pushTokenRegistered = merged.pushTokenRegistered ?? false;
 
         return merged;
       },

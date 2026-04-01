@@ -11,6 +11,9 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.anonymous.khamoshchat",
+    infoPlist: {
+      UIBackgroundModes: ["remote-notification"],
+    },
   },
   android: {
     adaptiveIcon: {
@@ -25,6 +28,7 @@ const config: ExpoConfig = {
       "android.permission.READ_CONTACTS",
       "android.permission.WRITE_CONTACTS",
     ],
+    googleServicesFile: "./google-services.json", // TODO: SETUP REQUIRED - Place google-services.json in root directory
   },
   web: {
     output: "static",
@@ -32,6 +36,14 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    [
+      "expo-notifications",
+      {
+        icon: "./src/assets/images/icon.png",
+        color: "#FFCC00", 
+        androidMode: "default",
+      },
+    ],
     [
       "expo-contacts",
       {

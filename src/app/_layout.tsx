@@ -13,6 +13,10 @@ import {
     pruneInbox,
     pruneOutbox,
 } from "@/src/utils/storage";
+import useNotifications from "@/src/hooks/useNotifications";
+
+// Ensures background task is registered before React mounts
+import "@/src/utils/notifications/background";
 
 // Set the animation options. This is optional.
 SplashScreen.setOptions({
@@ -48,6 +52,9 @@ function InnerLayout({ isAuthenticated }: { isAuthenticated: boolean }) {
 
   // Consolidated hook handles connection + store sync + message listening
   useMqtt(isAuthenticated && hasMessagingIdentity ? topic : "");
+
+  // Handles push notification permissions, tokens, and local scheduling
+  useNotifications(isAuthenticated);
 
   // Open primary database on auth, with proper error handling
   useEffect(() => {
