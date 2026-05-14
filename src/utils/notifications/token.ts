@@ -1,4 +1,7 @@
 import * as Notifications from 'expo-notifications';
+import useSession from '@/src/store/useSession';
+import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
+import { toBase64, toBytes } from "@/src/utils/helpers/encoding";
 
 /**
  * Retrieves the raw FCM or APNs device push token.
@@ -15,76 +18,95 @@ export async function fetchDeviceToken(): Promise<string | null> {
   }
 }
 
-/**
- * Registers the device token with the backend server.
- * Needs valid authentication token from the session.
- */
 export async function registerTokenWithBackend(
-  authToken: string,
   deviceToken: string,
   platform: 'ios' | 'android'
 ): Promise<boolean> {
-  try {
-    const appVersion = "1.0.0";
+  const session = useSession.getState();
+  const phoneStr = `${session.phone.countryCode}${session.phone.number}`;
 
-    const payload = {
-      device_token: deviceToken,
-      platform,
-      app_version: appVersion
-    };
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL || "https://kchat.dkmondal.in";
+  // Create signature using Identity Key over the device token
+  let signatureStr = "";
+  let vrfStr = "";
 
-    console.log('[Push Token] Would register token with backend:', JSON.stringify(payload, null, 2));
-
-    /*
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL || "https://kchat.dkmondal.in";
-    
-    const response = await fetch(`${apiUrl}/device/register-token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${authToken}`
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (response.ok) {
-        return true;
-    } else {
-        console.error('Failed to register device token with backend:', await response.text());
-        return false;
+  if (session.iKey && session.iKey.byteLength > 0) {
+    try {
+      const fcmBytes = toBytes(deviceToken);
+      const { signature, vrf } = await LibsignalDezireModule.vxeddsaSign(session.iKey, fcmBytes);
+      signatureStr = toBase64(signature);
+      vrfStr = toBase64(vrf);
+    } catch (e) {
+      console.error("[Push Token] Failed to sign FCM token", e);
     }
-    */
-
-    // Simulate successful registration for now
-    return true;
-  } catch (error) {
-    console.warn('Error registering device token:', error);
-    return false;
   }
+
+  const payload = {
+    phone: phoneStr,
+    fcmToken: deviceToken,
+    signature: signatureStr,
+    vrf: vrfStr
+  };
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL || "https://kchat.dkmondal.in";
+
+  console.log('[Push Token] Registering token with backend:', JSON.stringify(payload, null, 2));
+
+  const { success } = await fetchWithBackoff(`${apiUrl}/register/device/fcm`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  return success;
 }
 
 /**
  * Unregisters the token from the backend, typically called on logout.
  */
-export async function unregisterTokenFromBackend(authToken: string, deviceToken: string): Promise<boolean> {
-  try {
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL || "https://kchat.dkmondal.in";
+export async function unregisterTokenFromBackend(deviceToken: string): Promise<boolean> {
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL || "https://kchat.dkmondal.in";
 
-    const response = await fetch(`${apiUrl}/device/unregister-token`, {
-      method: "POST", // Adjust to actual endpoint semantics
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${authToken}`
-      },
-      body: JSON.stringify({
-        device_token: deviceToken,
-      })
-    });
+  const { success } = await fetchWithBackoff(`${apiUrl}/unregister/device/fcm`, {
+    method: "POST", // Adjust to actual endpoint semantics
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      device_token: deviceToken,
+    })
+  });
 
-    return response.ok;
-  } catch (error) {
-    console.error('Error unregistering device token:', error);
-    return false;
-  }
+  return success;
 }
+
+/**
+ * Wrapper for network calls involving FCM keys to survive connectivity drops when foregrounding
+ */
+async function fetchWithBackoff(url: string, options: RequestInit, maxRetries = 5) {
+  let attempt = 0;
+  let delay = 1000;
+
+  while (attempt < maxRetries) {
+    try {
+      const response = await fetch(url, options);
+      if (response.ok) {
+        return { success: true, response };
+      }
+      console.warn(`[Token API] Non-OK response (${response.status}) on attempt ${attempt + 1}:`, await response.text());
+    } catch (error) {
+      console.warn(`[Token API] Network error on attempt ${attempt + 1}:`, error);
+    }
+
+    attempt++;
+    if (attempt < maxRetries) {
+      const jitter = Math.random() * 500;
+      await new Promise(resolve => setTimeout(resolve, delay + jitter));
+      delay = Math.min(delay * 2, 10000); // capped at 10s
+    }
+  }
+
+  console.error(`[Token API] Failed to reach ${url} after ${maxRetries} attempts`);
+  return { success: false };
+}
+

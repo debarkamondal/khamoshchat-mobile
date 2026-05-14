@@ -17,7 +17,7 @@ export async function processIncomingMessage(
     session: Session,
     topic: string,
     rawPayload: string
-): Promise<void> {
+): Promise<string> {
     const parsed = JSON.parse(rawPayload);
     const payload = parsed as X3DHBundle & { ciphertext: string; header: string };
 
@@ -35,7 +35,7 @@ export async function processIncomingMessage(
             throw new Error('Session not registered, cannot process initial message');
         }
 
-        await receiveInitialMessage({
+        const result = await receiveInitialMessage({
             session,
             payload,
             senderPhone,
@@ -44,6 +44,11 @@ export async function processIncomingMessage(
             decrypt: (header, ciphertext, ad) =>
                 decryptMessage(senderPhone, header, ciphertext, ad),
         });
+
+        if (!result) {
+            throw new Error(`Failed to decrypt initial message from ${senderPhone}`);
+        }
+        return result.plaintext;
     } else if (payload.ciphertext && payload.header) {
         // Subsequent message — ratchet already initialized
         const identityKey = await getIdentityKey(senderPhone);
@@ -51,7 +56,7 @@ export async function processIncomingMessage(
             throw new Error(`No identity key found for sender: ${senderPhone}`);
         }
 
-        await receiveMessage({
+        const result = await receiveMessage({
             session,
             payload,
             senderPhone,
@@ -59,6 +64,11 @@ export async function processIncomingMessage(
             decrypt: (header, ciphertext, ad) =>
                 decryptMessage(senderPhone, header, ciphertext, ad),
         });
+
+        if (!result) {
+            throw new Error(`Failed to decrypt subsequent message from ${senderPhone}`);
+        }
+        return result.plaintext;
     } else {
         throw new Error(`Unrecognized message payload shape from ${senderPhone}`);
     }

@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "822771804895",
+    "project_id": "khamoshchat",
+    "storage_bucket": "khamoshchat.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:822771804895:android:867b09450affa01211176a",
+        "android_client_info": {
+          "package_name": "in.dkmondal.kchat"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "822771804895-blggkiescmpvk1qp3qc0vdj2jdtel8lg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNB5qJHLXwKB1tXPcogJZHs72XL87rzv0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "822771804895-blggkiescmpvk1qp3qc0vdj2jdtel8lg.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "822771804895-gn22q3ah6hp7n9mm4v2mcks1345kaiij.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "in.dkmondal.kchat"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

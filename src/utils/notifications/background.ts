@@ -47,12 +47,12 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error, execu
       const inboxId = await saveToInbox(topic, payload);
       
       try {
-        await processIncomingMessage(session, topic, payload);
+        const decryptedPlaintext = await processIncomingMessage(session, topic, payload);
         if (inboxId) {
           await markInboxProcessed(inboxId);
         }
 
-        await showMessageNotification(sender || topic, 'You received a new message', { topic });
+        await showMessageNotification(sender || topic, decryptedPlaintext, { topic });
       } catch {
           await showMessageNotification(sender || topic, 'New message received', { topic });
       }

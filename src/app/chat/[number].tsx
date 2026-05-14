@@ -123,7 +123,7 @@ export default function Chat() {
     return () => {
       isMounted = false;
       unsubscribe();
-      closeChatDatabase(number).catch(() => {});
+      closeChatDatabase(number).catch(() => { });
     };
   }, [number]);
 
@@ -309,7 +309,7 @@ export default function Chat() {
       {isUserNotFound && (
         <View style={{ paddingVertical: 8, paddingHorizontal: 16, alignItems: 'center', backgroundColor: colors.surface }}>
           <StyledText style={{ color: colors.onSurfaceVariant as string, textAlign: 'center', fontSize: 13 }}>
-            This Contact isn't using KhamoshChat yet.
+            This Contact isn&apos;t using KhamoshChat yet.
           </StyledText>
           {/* TODO: Add ways to invite non-customers to the platform */}
         </View>

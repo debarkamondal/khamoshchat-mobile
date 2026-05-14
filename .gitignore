@@ -13,7 +13,6 @@ scripts/send-test-push.js
 
 # FCM files
 scripts/service-account.json
-google-services.json
 
 #build files
 build-*

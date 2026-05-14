@@ -10,7 +10,7 @@ const config: ExpoConfig = {
   userInterfaceStyle: "automatic",
   ios: {
     supportsTablet: true,
-    bundleIdentifier: "com.anonymous.khamoshchat",
+    bundleIdentifier: "in.dkmondal.kchat",
     infoPlist: {
       UIBackgroundModes: ["remote-notification"],
     },
@@ -23,7 +23,7 @@ const config: ExpoConfig = {
       monochromeImage: "./src/assets/images/android-icon-monochrome.png",
     },
     predictiveBackGestureEnabled: true,
-    package: "com.anonymous.khamoshchat",
+    package: "in.dkmondal.kchat",
     permissions: [
       "android.permission.READ_CONTACTS",
       "android.permission.WRITE_CONTACTS",

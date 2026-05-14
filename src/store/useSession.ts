@@ -18,7 +18,7 @@ export type Session = {
   isRegistered: boolean;
   isAuthenticated: boolean;
   authProvider: AuthProvider;
-  authToken: string | null;
+  googleOauthToken: string | null;
   userId: string | null;
   email: string | null;
   displayName: string | null;
@@ -51,7 +51,7 @@ const useSession = create(
       isRegistered: false,
       isAuthenticated: false,
       authProvider: null,
-      authToken: null,
+      googleOauthToken: null,
       userId: null,
       email: null,
       displayName: null,
@@ -78,7 +78,7 @@ const useSession = create(
           isAuthenticated: true,
           isRegistered: true,
           authProvider: "google",
-          authToken: token,
+          googleOauthToken: token,
           userId,
           email,
           displayName,
@@ -90,7 +90,7 @@ const useSession = create(
           isAuthenticated: false,
           isRegistered: false,
           authProvider: null,
-          authToken: null,
+          googleOauthToken: null,
           userId: null,
           email: null,
           displayName: null,
@@ -102,7 +102,7 @@ const useSession = create(
           isRegistered: false,
           isAuthenticated: false,
           authProvider: null,
-          authToken: null,
+          googleOauthToken: null,
           userId: null,
           email: null,
           displayName: null,
@@ -163,7 +163,7 @@ const useSession = create(
           merged.preKey = new Uint8Array(Object.values(merged.preKey));
         }
 
-        merged.isAuthenticated = Boolean(merged.authToken && merged.userId);
+        merged.isAuthenticated = Boolean(merged.googleOauthToken && merged.userId);
         merged.isRegistered = merged.isRegistered || merged.isAuthenticated;
         merged.authProvider = merged.authProvider ?? null;
         merged.email = merged.email ?? null;

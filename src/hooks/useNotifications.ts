@@ -22,7 +22,7 @@ Notifications.setNotificationHandler({
 });
 
 export default function useNotifications(isAuthenticated: boolean) {
-  const { pushToken, pushTokenRegistered, setPushToken, setPushTokenRegistered, authToken } = useSession((s) => s);
+  const { pushToken, pushTokenRegistered, setPushToken, setPushTokenRegistered, googleOauthToken } = useSession((s) => s);
 
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
@@ -70,12 +70,12 @@ export default function useNotifications(isAuthenticated: boolean) {
 
   // 2. Token Sync: Listens to state changes and syncs token safely
   useEffect(() => {
-    if (!isAuthenticated || !authToken) return;
-    
+    if (!isAuthenticated || !googleOauthToken) return;
+
     let isMounted = true;
 
     async function syncToken() {
-      if (!authToken) return;
+      if (!googleOauthToken) return;
       const token = await fetchDeviceToken();
       if (!token) return;
 
@@ -85,7 +85,7 @@ export default function useNotifications(isAuthenticated: boolean) {
 
       if (!pushTokenRegistered || pushToken !== token) {
         const platform = Platform.OS === 'ios' ? 'ios' : 'android';
-        const success = await registerTokenWithBackend(authToken, token, platform);
+        const success = await registerTokenWithBackend(token, platform);
         if (isMounted && success) {
           setPushTokenRegistered(true);
         }
@@ -94,5 +94,5 @@ export default function useNotifications(isAuthenticated: boolean) {
     syncToken();
 
     return () => { isMounted = false; };
-  }, [isAuthenticated, authToken, pushToken, pushTokenRegistered, setPushToken, setPushTokenRegistered]);
+  }, [isAuthenticated, googleOauthToken, pushToken, pushTokenRegistered, setPushToken, setPushTokenRegistered]);
 }
