@@ -46,7 +46,7 @@ async function applyKeyAndVerify(
             'SELECT count(*) as count FROM sqlite_master;'
         );
     } catch {
-        await db.closeAsync().catch(() => {});
+        await db.closeAsync().catch(() => { });
         throw new DatabaseKeyMismatchError(chatId);
     }
 }
@@ -294,7 +294,7 @@ async function migrateDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
  * Schema migration for the primary database.
  */
 async function migratePrimaryDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
-    const DATABASE_VERSION = 3;
+    const DATABASE_VERSION = 4;
     const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
     const currentVersion = result?.user_version ?? 0;
 
@@ -305,7 +305,7 @@ async function migratePrimaryDatabase(db: SQLite.SQLiteDatabase): Promise<void> 
     if (currentVersion < 1) {
         await db.execAsync(`
             CREATE TABLE IF NOT EXISTS chats (
-                phone         TEXT PRIMARY KEY NOT NULL,
+                user_id       TEXT PRIMARY KEY NOT NULL,
                 name          TEXT,
                 last_message  TEXT,
                 last_message_at INTEGER NOT NULL,

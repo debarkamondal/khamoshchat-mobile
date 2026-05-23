@@ -3,6 +3,7 @@ import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezir
 import { generateOpks } from "@/src/utils/crypto/oneTimePreKeys";
 import useSession from "@/src/store/useSession";
 import { toBase64 } from "@/src/utils/helpers/encoding";
+import { apiRequest } from "@/src/utils/transport/api";
 
 export type AuthenticatedUser = {
   token: string;
@@ -67,44 +68,52 @@ export async function startGoogleSignIn(): Promise<AuthenticatedUser> {
   };
 }
 
-export async function registerWithGoogleBackend(
-  idToken: string,
-  phoneDetails: { countryCode: string; number: number }
+// Phase 1: OAuth verification → returns server-assigned userId
+export async function verifyGoogleIdToken(idToken: string): Promise<{
+  userId: string;
+  email: string;
+  name: string | null;
+  picture: string | null;
+}> {
+  return apiRequest("/register/google/id_token", {
+    method: "POST",
+    body: { id_token: idToken },
+  });
+}
+
+// Phase 2: Device + key registration
+export async function registerDevice(
+  userId: string,
+  phoneDetails: { countryCode: string; number: number },
+  deviceId: string,
+  fcmToken?: string | null,
 ): Promise<void> {
   const session = useSession.getState();
-  const { iKey, preKey } = await session.initSession(phoneDetails);
+  const { iKey, preKey, devKey } = await session.initSession(phoneDetails);
 
   const pubIKey = await LibsignalDezireModule.genPubKey(iKey);
   const pubPreKey = await LibsignalDezireModule.genPubKey(preKey);
-  const { signature, vrf } = await LibsignalDezireModule.vxeddsaSign(iKey, pubPreKey);
+  const pubDevKey = await LibsignalDezireModule.genPubKey(devKey);
 
-  const b64IKey = toBase64(pubIKey);
-  const b64Sign = toBase64(signature);
-  const b64PreKey = toBase64(pubPreKey);
-  const b64Vrf = toBase64(vrf);
+  const { signature: preKeySign, vrf: preKeyVrf } = await LibsignalDezireModule.vxeddsaSign(iKey, pubPreKey);
+  const { signature: devKeySign, vrf: devKeyVrf } = await LibsignalDezireModule.vxeddsaSign(iKey, pubDevKey);
   const b64Opks = await generateOpks();
 
-  const payload = {
-    phone: `${phoneDetails.countryCode}${phoneDetails.number}`,
-    iKey: b64IKey,
-    signedPreKey: b64PreKey,
-    sign: b64Sign,
-    vrf: b64Vrf,
-    opks: b64Opks,
-    id_token: idToken,
-  };
-
-  const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
-
-  const res = await fetch(`${apiUrl}/register/google_oauth/id_token`, {
+  await apiRequest("/register/device", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+    body: {
+      user_id: userId,
+      phone: `${phoneDetails.countryCode}${phoneDetails.number}`,
+      iKey: toBase64(pubIKey),
+      signedPreKey: toBase64(pubPreKey),
+      preKeySign: toBase64(preKeySign),
+      preKeyVrf: toBase64(preKeyVrf),
+      opks: b64Opks,
+      device_id: deviceId,
+      signDevKey: toBase64(pubDevKey),
+      devKeySign: toBase64(devKeySign),
+      devKeyVrf: toBase64(devKeyVrf),
+      fcmToken: fcmToken ?? undefined,
     },
-    body: JSON.stringify(payload),
   });
-
-  if (!res.ok) {
-    throw new Error(`Failed to register with Google Backend: HTTP ${res.status}`);
-  }
 }

@@ -13,7 +13,7 @@ import { getPrimaryDatabase } from './database';
  * Chat thread entry for the home screen list.
  */
 export interface ChatThread {
-    phone: string;
+    user_id: string;
     name: string | null;
     last_message: string | null;
     last_message_at: number;
@@ -48,18 +48,18 @@ function notifyChatListListeners(): void {
  *
  * @throws StorageError on write failure
  */
-export async function upsertChatThread(phone: string, lastMessage: string): Promise<void> {
+export async function upsertChatThread(userId: string, lastMessage: string): Promise<void> {
     const db = await getPrimaryDatabase();
     const now = Date.now();
 
     await db.runAsync(
-        `INSERT INTO chats (phone, last_message, last_message_at, unread_count, updated_at)
+        `INSERT INTO chats (user_id, last_message, last_message_at, unread_count, updated_at)
          VALUES (?, ?, ?, 0, ?)
-         ON CONFLICT(phone) DO UPDATE SET
+         ON CONFLICT(user_id) DO UPDATE SET
              last_message = excluded.last_message,
              last_message_at = excluded.last_message_at,
              updated_at = excluded.updated_at`,
-        phone,
+        userId,
         lastMessage,
         now,
         now
@@ -85,8 +85,8 @@ export async function getChatThreads(): Promise<ChatThread[]> {
  *
  * @throws StorageError on write failure
  */
-export async function deleteChatThread(phone: string): Promise<void> {
+export async function deleteChatThread(userId: string): Promise<void> {
     const db = await getPrimaryDatabase();
-    await db.runAsync('DELETE FROM chats WHERE phone = ?', phone);
+    await db.runAsync('DELETE FROM chats WHERE user_id = ?', userId);
     notifyChatListListeners();
 }

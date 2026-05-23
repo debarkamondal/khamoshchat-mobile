@@ -77,7 +77,10 @@ export default function Contacts() {
             <Pressable
               onPress={() => {
                 const phone = item.number.replace(/[^0-9+]/g, "");
-                router.replace(`/chat/${phone}?id=${item.id}`);
+                // TODO: Backend bridge needed (e.g., GET /user?phone=...)
+                // We need to map the contact's phone number to their UUID (userId)
+                // before routing. For now, routing with phone will cause a UserNotFoundError.
+                router.replace({ pathname: "/chat/[userId]", params: { userId: phone, id: item.id } });
               }}
               style={styles.cardContent}
             >

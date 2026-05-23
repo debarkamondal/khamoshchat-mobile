@@ -18,7 +18,7 @@ export default function OtpScreenDraft() {
     iKey,
     preKey,
     phone,
-    markSessionRegistered,
+    markDeviceRegistered,
   } = useSession();
 
   const submit = async (otp: number) => {
@@ -45,7 +45,7 @@ export default function OtpScreenDraft() {
     });
 
     if (res.status === 204) {
-      markSessionRegistered();
+      markDeviceRegistered("mock-device-id");
       router.replace("/");
     }
   };

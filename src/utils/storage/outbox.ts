@@ -23,7 +23,7 @@ export type OutboxStatus = 'pending' | 'sent' | 'failed';
 
 export interface OutboxEntry {
     id: number;
-    chat_id: string;      // recipient phone number
+    chat_id: string;      // recipient userId
     message_id: string;    // matches messages.id in per-chat DB
     payload: string;       // encrypted JSON ready for MQTT publish
     topic: string;         // MQTT topic

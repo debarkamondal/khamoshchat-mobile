@@ -32,6 +32,7 @@ import {
   encryptMessage,
   isRatchetInitialized,
   getIdentityKey,
+  getDeviceId,
   loadRatchetSession,
   clearSession
 } from "@/src/utils/crypto";
@@ -75,7 +76,7 @@ export default function Chat() {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   }, []);
 
-  const { number, id }: { number: string; id: string } = useLocalSearchParams();
+  const { userId, id }: { userId: string; id: string } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const session = useSession();
@@ -85,10 +86,10 @@ export default function Chat() {
 
     const initChat = async (attempt = 0) => {
       try {
-        await openChatDatabase(number);
+        await openChatDatabase(userId);
         if (!isMounted) return;
 
-        const msgs = await getMessages(number);
+        const msgs = await getMessages(userId);
         if (isMounted) {
           setChatMessages(msgs);
           setDbError(null);
@@ -113,8 +114,8 @@ export default function Chat() {
 
     // Subscribe to live message updates
     const unsubscribe = subscribeToMessages((updatedChatId) => {
-      if (updatedChatId === number && isMounted) {
-        getMessages(number)
+      if (updatedChatId === userId && isMounted) {
+        getMessages(userId)
           .then(setChatMessages)
           .catch(e => console.error('Failed to refresh messages:', e));
       }
@@ -123,9 +124,9 @@ export default function Chat() {
     return () => {
       isMounted = false;
       unsubscribe();
-      closeChatDatabase(number).catch(() => { });
+      closeChatDatabase(userId).catch(() => { });
     };
-  }, [number]);
+  }, [userId]);
 
   const handleSendMessage = async (msg: string, attempt = 0) => {
     setIsUserNotFound(false);
@@ -143,24 +144,26 @@ export default function Chat() {
 
     try {
       // Check if we already have a session with this user
-      let hasSession = await isRatchetInitialized(number);
+      let hasSession = await isRatchetInitialized(userId);
       if (!hasSession) {
-        await loadRatchetSession(number);
-        hasSession = await isRatchetInitialized(number);
+        await loadRatchetSession(userId);
+        hasSession = await isRatchetInitialized(userId);
       }
 
       if (hasSession) {
-        const identityKey = await getIdentityKey(number);
-        if (!identityKey) {
-          console.warn('Session broken: missing identity key. Clearing session and retrying.');
-          await clearSession(number);
+        const identityKey = await getIdentityKey(userId);
+        const deviceId = await getDeviceId(userId);
+        if (!identityKey || !deviceId) {
+          console.warn('Session broken: missing identity key or device ID. Clearing session and retrying.');
+          await clearSession(userId);
           hasSession = false;
         } else {
           await sendMessage({
             session,
-            number,
+            recipientUserId: userId,
+            recipientDeviceId: deviceId,
             message: msg,
-            encrypt: (plaintext, ad) => encryptMessage(number, plaintext, ad),
+            encrypt: (plaintext, ad) => encryptMessage(userId, plaintext, ad),
             recipientIdentityKey: identityKey,
           });
         }
@@ -169,11 +172,11 @@ export default function Chat() {
       if (!hasSession) {
         await sendInitialMessage({
           session,
-          number,
+          recipientIdentifier: userId,
           message: msg,
-          initSender: (sharedSecret, receiverPub, identityKey) =>
-            initSender(number, sharedSecret, receiverPub, identityKey),
-          encrypt: (plaintext, ad) => encryptMessage(number, plaintext, ad),
+          initSender: (sharedSecret, receiverPub, identityKey, deviceId) =>
+            initSender(userId, sharedSecret, receiverPub, identityKey, deviceId),
+          encrypt: (plaintext, ad) => encryptMessage(userId, plaintext, ad),
         });
       }
     } catch (error) {
@@ -221,10 +224,10 @@ export default function Chat() {
         const data = await Contacts.getContactByIdAsync(id.split("/")[0]);
         setName(data?.firstName + " " + (data?.lastName || ""));
       } else {
-        setName(number);
+        setName(userId);
       }
     })();
-  }, [id, number]);
+  }, [id, userId]);
 
   // Theme-dependent styles (memoized by theme)
   const themedStyles = useThemedStyles((colors) => ({
@@ -273,7 +276,7 @@ export default function Chat() {
         <StyledText style={styles.image}>
           <Ionicons name="person-circle-outline" size={32} />
         </StyledText>
-        <StyledText style={styles.headerTitle}>{name || number}</StyledText>
+        <StyledText style={styles.headerTitle}>{name || userId}</StyledText>
       </View>
 
       {dbError ? (

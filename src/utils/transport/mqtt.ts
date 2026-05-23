@@ -8,10 +8,15 @@ import MqttClient from "expo-native-mqtt";
 
 /**
  * Builds an MQTT topic for sending messages.
- * Format: /khamoshchat/<recipient>/<sender>
+ * Format: /khamoshchat/<recipientId>/<recipientDeviceId>/<senderId>/<senderDeviceId>
  */
-export function buildTopic(sender: string, recipient: string): string {
-    return `/khamoshchat/${encodeURIComponent(recipient)}/${encodeURIComponent(sender)}`;
+export function buildTopic(
+    recipientUserId: string,
+    recipientDeviceId: string,
+    senderUserId: string,
+    senderDeviceId: string,
+): string {
+    return `/khamoshchat/${recipientUserId}/${recipientDeviceId}/${senderUserId}/${senderDeviceId}`;
 }
 
 /**
@@ -37,11 +42,13 @@ export async function publishMessage(
  * Returns true if publish succeeded, false on failure.
  */
 export async function sendToRecipient(
-    sender: string,
-    recipient: string,
+    senderUserId: string,
+    senderDeviceId: string,
+    recipientUserId: string,
+    recipientDeviceId: string,
     payload: object
 ): Promise<boolean> {
-    const topic = buildTopic(sender, recipient);
+    const topic = buildTopic(recipientUserId, recipientDeviceId, senderUserId, senderDeviceId);
     return publishMessage(topic, JSON.stringify(payload));
 }
 

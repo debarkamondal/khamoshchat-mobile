@@ -17,6 +17,7 @@ import {
 type SessionCache = {
     uuid: string;             // Ratchet UUID (in-memory handle)
     identityKey: string;      // Identity key
+    deviceId: string;         // Device ID
 };
 const sessionCache: Record<string, SessionCache> = {};
 
@@ -25,20 +26,21 @@ const sessionCache: Record<string, SessionCache> = {};
 /**
  * Ensures a session is loaded into the cache.
  */
-async function ensureSessionLoaded(phone: string): Promise<SessionCache | undefined> {
-    if (sessionCache[phone]) {
-        return sessionCache[phone];
+async function ensureSessionLoaded(userId: string): Promise<SessionCache | undefined> {
+    if (sessionCache[userId]) {
+        return sessionCache[userId];
     }
 
-    const stored = await loadChatSession(phone);
+    const stored = await loadChatSession(userId);
     if (stored?.ratchetState) {
         try {
             const uuid = await LibsignalDezireModule.ratchetDeserialize(stored.ratchetState);
-            sessionCache[phone] = {
+            sessionCache[userId] = {
                 uuid,
                 identityKey: stored.identityKey,
+                deviceId: stored.deviceId,
             };
-            return sessionCache[phone];
+            return sessionCache[userId];
         } catch (e) {
             console.error('Failed to deserialize ratchet state:', e);
         }
@@ -50,13 +52,14 @@ async function ensureSessionLoaded(phone: string): Promise<SessionCache | undefi
 /**
  * Persists the current session state to storage.
  */
-async function persistSession(phone: string): Promise<void> {
-    const cached = sessionCache[phone];
+async function persistSession(userId: string): Promise<void> {
+    const cached = sessionCache[userId];
     if (!cached) return;
 
     const ratchetState = await LibsignalDezireModule.ratchetSerialize(cached.uuid);
-    await saveChatSession(phone, {
+    await saveChatSession(userId, {
         identityKey: cached.identityKey,
+        deviceId: cached.deviceId,
         ratchetState,
     });
 }
@@ -66,17 +69,19 @@ async function persistSession(phone: string): Promise<void> {
 /**
  * Saves an identity key for a contact.
  */
-export async function saveIdentityKey(phone: string, identityKey: string): Promise<void> {
-    if (sessionCache[phone]) {
-        sessionCache[phone].identityKey = identityKey;
-        await persistSession(phone);
+export async function saveIdentityKey(userId: string, identityKey: string, deviceId: string): Promise<void> {
+    if (sessionCache[userId]) {
+        sessionCache[userId].identityKey = identityKey;
+        sessionCache[userId].deviceId = deviceId;
+        await persistSession(userId);
     } else {
-        const existing = await loadChatSession(phone);
+        const existing = await loadChatSession(userId);
         if (existing) {
             existing.identityKey = identityKey;
-            await saveChatSession(phone, existing);
+            existing.deviceId = deviceId;
+            await saveChatSession(userId, existing);
         } else {
-            await saveChatSession(phone, { identityKey });
+            await saveChatSession(userId, { identityKey, deviceId });
         }
     }
 }
@@ -84,34 +89,38 @@ export async function saveIdentityKey(phone: string, identityKey: string): Promi
 /**
  * Gets the identity key for a contact.
  */
-export async function getIdentityKey(phone: string): Promise<string | undefined> {
-    const cached = sessionCache[phone];
-    if (cached) {
-        return cached.identityKey;
-    }
-
-    const stored = await loadChatSession(phone);
+export async function getIdentityKey(userId: string): Promise<string | undefined> {
+    const cached = sessionCache[userId];
+    if (cached) return cached.identityKey;
+    const stored = await loadChatSession(userId);
     return stored?.identityKey;
+}
+
+export async function getDeviceId(userId: string): Promise<string | undefined> {
+    const cached = sessionCache[userId];
+    if (cached) return cached.deviceId;
+    const stored = await loadChatSession(userId);
+    return stored?.deviceId;
 }
 
 /**
  * Initializes a sender (initiator) ratchet session.
  */
 export async function initSender(
-    phone: string,
+    userId: string,
     sharedSecret: Uint8Array,
     receiverPub: Uint8Array,
-    identityKey?: string
+    identityKey: string,
+    deviceId: string
 ): Promise<string> {
     const uuid = await LibsignalDezireModule.ratchetInitSender(sharedSecret, receiverPub);
 
-    const existingIdentityKey = identityKey ?? (await getIdentityKey(phone)) ?? '';
-
-    sessionCache[phone] = {
+    sessionCache[userId] = {
         uuid,
-        identityKey: existingIdentityKey,
+        identityKey,
+        deviceId,
     };
-    await persistSession(phone);
+    await persistSession(userId);
     return uuid;
 }
 
@@ -119,11 +128,12 @@ export async function initSender(
  * Initializes a receiver (responder) ratchet session.
  */
 export async function initReceiver(
-    phone: string,
+    userId: string,
     sharedSecret: Uint8Array,
     receiverPriv: Uint8Array,
     receiverPub: Uint8Array,
-    identityKey?: string
+    identityKey: string,
+    deviceId: string
 ): Promise<string> {
     const uuid = await LibsignalDezireModule.ratchetInitReceiver(
         sharedSecret,
@@ -131,13 +141,12 @@ export async function initReceiver(
         receiverPub
     );
 
-    const existingIdentityKey = identityKey ?? (await getIdentityKey(phone)) ?? '';
-
-    sessionCache[phone] = {
+    sessionCache[userId] = {
         uuid,
-        identityKey: existingIdentityKey,
+        identityKey,
+        deviceId,
     };
-    await persistSession(phone);
+    await persistSession(userId);
     return uuid;
 }
 
@@ -145,19 +154,15 @@ export async function initReceiver(
  * Encrypts a message using the ratchet session.
  */
 export async function encryptMessage(
-    phone: string,
+    userId: string,
     plaintext: Uint8Array,
     ad?: Uint8Array
 ): Promise<RatchetEncryptResult | null> {
-    const session = await ensureSessionLoaded(phone);
-    if (!session) {
-        throw new Error('Session not initialized for ' + phone);
-    }
+    const session = await ensureSessionLoaded(userId);
+    if (!session) throw new Error('Session not initialized for ' + userId);
 
     const result = await LibsignalDezireModule.ratchetEncrypt(session.uuid, plaintext, ad);
-    if (result) {
-        await persistSession(phone);
-    }
+    if (result) await persistSession(userId);
     return result;
 }
 
@@ -165,15 +170,13 @@ export async function encryptMessage(
  * Decrypts a message using the ratchet session.
  */
 export async function decryptMessage(
-    phone: string,
+    userId: string,
     header: Uint8Array,
     ciphertext: Uint8Array,
     ad?: Uint8Array
 ): Promise<Uint8Array | null> {
-    const session = await ensureSessionLoaded(phone);
-    if (!session) {
-        throw new Error('Session not initialized for ' + phone);
-    }
+    const session = await ensureSessionLoaded(userId);
+    if (!session) throw new Error('Session not initialized for ' + userId);
 
     const plaintext = await LibsignalDezireModule.ratchetDecrypt(
         session.uuid,
@@ -181,59 +184,38 @@ export async function decryptMessage(
         ciphertext,
         ad
     );
-    if (plaintext) {
-        await persistSession(phone);
-    }
+    if (plaintext) await persistSession(userId);
     return plaintext;
 }
 
-/**
- * Loads a ratchet session into cache and returns its UUID.
- */
-export async function loadRatchetSession(phone: string): Promise<string | undefined> {
-    const session = await ensureSessionLoaded(phone);
+export async function loadRatchetSession(userId: string): Promise<string | undefined> {
+    const session = await ensureSessionLoaded(userId);
     return session?.uuid;
 }
 
-/**
- * Checks if a ratchet session is initialized for a phone number.
- */
-export async function isRatchetInitialized(phone: string): Promise<boolean> {
-    if (sessionCache[phone]) {
-        return true;
-    }
-    const stored = await loadChatSession(phone);
+export async function isRatchetInitialized(userId: string): Promise<boolean> {
+    if (sessionCache[userId]) return true;
+    const stored = await loadChatSession(userId);
     return !!stored?.ratchetState;
 }
 
-/**
- * Frees the in-memory ratchet session (does not delete from storage).
- */
-export async function freeRatchetSession(phone: string): Promise<void> {
-    const cached = sessionCache[phone];
+export async function freeRatchetSession(userId: string): Promise<void> {
+    const cached = sessionCache[userId];
     if (cached) {
         try {
             await LibsignalDezireModule.ratchetFree(cached.uuid);
         } catch (e) {
             console.warn('Failed to free ratchet session', e);
         }
-        delete sessionCache[phone];
+        delete sessionCache[userId];
     }
 }
 
-/**
- * Clears a session completely (memory and storage).
- */
-export async function clearSession(phone: string): Promise<void> {
-    await freeRatchetSession(phone);
-    await deleteChatSession(phone);
+export async function clearSession(userId: string): Promise<void> {
+    await freeRatchetSession(userId);
+    await deleteChatSession(userId);
 }
 
-/**
- * Gets the session cache entry for a phone number.
- */
-export async function getSession(phone: string): Promise<SessionCache | undefined> {
-    return ensureSessionLoaded(phone);
+export async function getSession(userId: string): Promise<SessionCache | undefined> {
+    return ensureSessionLoaded(userId);
 }
-
-

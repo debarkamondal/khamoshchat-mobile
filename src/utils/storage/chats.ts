@@ -15,6 +15,7 @@ const SESSION_KEY = 'chat_session';
  */
 export type ChatSession = {
     identityKey: string;      // Base64 encoded identity key
+    deviceId: string;         // Device ID of the recipient
     ratchetState?: string;    // Serialized ratchet state (optional until initialized)
 };
 
@@ -23,8 +24,8 @@ export type ChatSession = {
  *
  * @throws StorageError on write failure
  */
-export async function saveChatSession(phone: string, session: ChatSession): Promise<void> {
-    const db = await openChatDatabase(phone);
+export async function saveChatSession(userId: string, session: ChatSession): Promise<void> {
+    const db = await openChatDatabase(userId);
     await db.runAsync(
         `INSERT OR REPLACE INTO sessions (key, value, updated_at) VALUES (?, ?, ?)`,
         SESSION_KEY,
@@ -39,8 +40,8 @@ export async function saveChatSession(phone: string, session: ChatSession): Prom
  *
  * @throws StorageError on read failure
  */
-export async function loadChatSession(phone: string): Promise<ChatSession | undefined> {
-    const db = await openChatDatabase(phone);
+export async function loadChatSession(userId: string): Promise<ChatSession | undefined> {
+    const db = await openChatDatabase(userId);
     const row = await db.getFirstAsync<{ value: string }>(
         `SELECT value FROM sessions WHERE key = ?`,
         SESSION_KEY
@@ -56,8 +57,8 @@ export async function loadChatSession(phone: string): Promise<ChatSession | unde
  *
  * @throws StorageError on write failure
  */
-export async function deleteChatSession(phone: string): Promise<void> {
-    const db = await openChatDatabase(phone);
+export async function deleteChatSession(userId: string): Promise<void> {
+    const db = await openChatDatabase(userId);
     await db.runAsync(
         `DELETE FROM sessions WHERE key = ?`,
         SESSION_KEY

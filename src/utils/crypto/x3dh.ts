@@ -8,6 +8,8 @@ import { toBase64, fromBase64 } from '../helpers/encoding';
 import { Session } from '@/src/store/useSession';
 
 export type PreKeyBundle = {
+    userId: string;
+    deviceId: string;
     identityKey: string;
     signature: string;
     signedPreKey: string;
@@ -52,22 +54,7 @@ function serializeBobBundle(
     return bytes;
 }
 
-/**
- * Generates authentication parameters for bundle fetch.
- */
-export async function generateAuthParams(
-    session: Session,
-    id: string
-): Promise<{ signature: string; vrf: string }> {
-    const sign = await LibsignalDezireModule.vxeddsaSign(
-        session.preKey,
-        new TextEncoder().encode(id)
-    );
-    return {
-        signature: toBase64(sign.signature),
-        vrf: toBase64(sign.vrf),
-    };
-}
+
 
 /**
  * Initiator side of X3DH key agreement.

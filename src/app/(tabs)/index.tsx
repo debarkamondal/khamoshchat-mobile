@@ -24,7 +24,7 @@ export default function Index() {
     return threads.filter(
       (t) =>
         (t.name && t.name.toLowerCase().includes(query)) ||
-        t.phone.toLowerCase().includes(query) ||
+        t.user_id.toLowerCase().includes(query) ||
         (t.last_message && t.last_message.toLowerCase().includes(query))
     );
   }, [threads, searchQuery]);
@@ -160,7 +160,7 @@ export default function Index() {
   const renderThread = useCallback(({ item }: { item: ChatThread }) => (
     <Pressable
       style={themedStyles.threadItem}
-      onPress={() => router.push({ pathname: "/chat/[number]", params: { number: item.phone } })}
+      onPress={() => router.push({ pathname: "/chat/[userId]", params: { userId: item.user_id } })}
     >
       <View style={themedStyles.avatar}>
         <StyledText>
@@ -170,7 +170,7 @@ export default function Index() {
       <View style={styles.threadContent}>
         <View style={styles.threadHeader}>
           <StyledText style={styles.threadName} numberOfLines={1}>
-            {item.name || item.phone}
+            {item.name || item.user_id}
           </StyledText>
           <StyledText style={[styles.threadTime, { color: colors.outline }]}>
             {formatTime(item.last_message_at)}
@@ -235,7 +235,7 @@ export default function Index() {
       ) : (
         <FlatList
           data={filteredThreads}
-          keyExtractor={(item) => item.phone}
+          keyExtractor={(item) => item.user_id}
           renderItem={renderThread}
           ListHeaderComponent={ListHeader}
           keyboardShouldPersistTaps="handled"

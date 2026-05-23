@@ -17,7 +17,7 @@ import { constructReceiverAD } from '../crypto/associatedData';
 type ReceiveInitialMessageParams = {
     session: Session;
     payload: X3DHBundle & { ciphertext: string; header: string };
-    senderPhone: string;
+    senderUserId: string;
     initReceiver: (
         sharedSecret: Uint8Array,
         receiverPriv: Uint8Array,
@@ -34,7 +34,7 @@ type ReceiveInitialMessageParams = {
 type ReceiveMessageParams = {
     session: Session;
     payload: { ciphertext: string; header: string };
-    senderPhone: string;
+    senderUserId: string;
     senderIdentityKey: string;
     decrypt: (
         header: Uint8Array,
@@ -45,7 +45,7 @@ type ReceiveMessageParams = {
 
 type ReceiveResult = {
     plaintext: string;
-    senderPhone: string;
+    senderUserId: string;
     sharedSecret?: Uint8Array;
 };
 
@@ -57,7 +57,7 @@ type ReceiveResult = {
 export async function receiveInitialMessage({
     session,
     payload,
-    senderPhone,
+    senderUserId,
     initReceiver,
     decrypt,
 }: ReceiveInitialMessageParams): Promise<ReceiveResult | null> {
@@ -95,15 +95,15 @@ export async function receiveInitialMessage({
 
         // 6. Save message
         const plaintextStr = toString(plaintext);
-        await saveMessage(senderPhone, {
+        await saveMessage(senderUserId, {
             content: plaintextStr,
-            sender_id: senderPhone,
+            sender_id: senderUserId,
         });
 
         return {
             sharedSecret,
             plaintext: plaintextStr,
-            senderPhone,
+            senderUserId,
         };
     } catch (e) {
         console.error('Error processing receive message:', e);
@@ -117,7 +117,7 @@ export async function receiveInitialMessage({
 export async function receiveMessage({
     session,
     payload,
-    senderPhone,
+    senderUserId,
     senderIdentityKey,
     decrypt,
 }: ReceiveMessageParams): Promise<ReceiveResult | null> {
@@ -135,14 +135,14 @@ export async function receiveMessage({
 
         // 2. Save message
         const plaintextStr = toString(plaintext);
-        await saveMessage(senderPhone, {
+        await saveMessage(senderUserId, {
             content: plaintextStr,
-            sender_id: senderPhone,
+            sender_id: senderUserId,
         });
 
         return {
             plaintext: plaintextStr,
-            senderPhone,
+            senderUserId,
         };
     } catch (e) {
         console.error('Error processing subsequent message:', e);

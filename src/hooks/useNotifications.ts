@@ -52,12 +52,9 @@ export default function useNotifications(isAuthenticated: boolean) {
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
-      if (data && data.sender) {
-        let numberParam = data.sender;
-        if (typeof numberParam === 'string' && numberParam.startsWith('+91')) {
-          numberParam = numberParam.substring(3);
-        }
-        router.push(`/chat/${numberParam}`);
+      const senderId = data?.sender_id || data?.sender;
+      if (senderId) {
+        router.push(`/chat/${senderId}`);
       }
     });
 
@@ -84,8 +81,7 @@ export default function useNotifications(isAuthenticated: boolean) {
       }
 
       if (!pushTokenRegistered || pushToken !== token) {
-        const platform = Platform.OS === 'ios' ? 'ios' : 'android';
-        const success = await registerTokenWithBackend(token, platform);
+        const success = await registerTokenWithBackend(token);
         if (isMounted && success) {
           setPushTokenRegistered(true);
         }

@@ -15,11 +15,12 @@ export type Session = {
   phone: PhoneIdentity;
   iKey: Uint8Array;
   preKey: Uint8Array;
-  isRegistered: boolean;
+  devKey: Uint8Array;
   isAuthenticated: boolean;
   authProvider: AuthProvider;
   googleOauthToken: string | null;
   userId: string | null;
+  deviceId: string | null;
   email: string | null;
   displayName: string | null;
   avatarUrl: string | null;
@@ -27,10 +28,9 @@ export type Session = {
   pushTokenRegistered: boolean;
   setPushToken: (token: string | null) => void;
   setPushTokenRegistered: (registered: boolean) => void;
-  initSession: (phone: PhoneIdentity) => Promise<{ iKey: Uint8Array; preKey: Uint8Array }>;
+  initSession: (phone: PhoneIdentity) => Promise<{ iKey: Uint8Array; preKey: Uint8Array; devKey: Uint8Array }>;
   clearSession: () => Promise<void>;
-  markSessionRegistered: () => void;
-  markSessionUnregistered: () => void;
+  markDeviceRegistered: (deviceId: string) => void;
   setAuthenticatedUser: (payload: {
     token: string;
     userId: string;
@@ -48,11 +48,11 @@ const useSession = create(
         countryCode: "+91",
         number: 0,
       },
-      isRegistered: false,
       isAuthenticated: false,
       authProvider: null,
       googleOauthToken: null,
       userId: null,
+      deviceId: null,
       email: null,
       displayName: null,
       avatarUrl: null,
@@ -60,6 +60,7 @@ const useSession = create(
       pushTokenRegistered: false,
       iKey: new Uint8Array(),
       preKey: new Uint8Array(),
+      devKey: new Uint8Array(),
 
       setPushToken: (token) => {
         set({ pushToken: token });
@@ -67,16 +68,12 @@ const useSession = create(
       setPushTokenRegistered: (registered) => {
         set({ pushTokenRegistered: registered });
       },
-      markSessionUnregistered: () => {
-        set({ isRegistered: false });
-      },
-      markSessionRegistered: () => {
-        set({ isRegistered: true });
+      markDeviceRegistered: (deviceId) => {
+        set({ isAuthenticated: true, deviceId });
       },
       setAuthenticatedUser: ({ token, userId, email, displayName, avatarUrl }) => {
         set({
-          isAuthenticated: true,
-          isRegistered: true,
+          isAuthenticated: false,
           authProvider: "google",
           googleOauthToken: token,
           userId,
@@ -88,10 +85,10 @@ const useSession = create(
       clearAuthenticatedUser: async () => {
         set({
           isAuthenticated: false,
-          isRegistered: false,
           authProvider: null,
           googleOauthToken: null,
           userId: null,
+          deviceId: null,
           email: null,
           displayName: null,
           avatarUrl: null,
@@ -99,11 +96,11 @@ const useSession = create(
       },
       clearSession: async () => {
         set({
-          isRegistered: false,
           isAuthenticated: false,
           authProvider: null,
           googleOauthToken: null,
           userId: null,
+          deviceId: null,
           email: null,
           displayName: null,
           avatarUrl: null,
@@ -111,13 +108,15 @@ const useSession = create(
           phone: { countryCode: "", number: 0 },
           iKey: new Uint8Array(),
           preKey: new Uint8Array(),
+          devKey: new Uint8Array(),
         });
       },
       initSession: async (phone) => {
         await deleteItemAsync("opks");
         const iKey = await LibsignalDezireModule.genSecret();
         const preKey = await LibsignalDezireModule.genSecret();
-        if (!iKey && !preKey) {
+        const devKey = await LibsignalDezireModule.genSecret();
+        if (!iKey || !preKey || !devKey) {
           Alert.alert(
             "Error",
             "Something wrong happened. Couldn't initialize session",
@@ -133,11 +132,13 @@ const useSession = create(
             phone,
             iKey,
             preKey,
+            devKey,
           });
         }
         return {
           iKey,
           preKey,
+          devKey,
         };
       },
     }),
@@ -163,12 +164,18 @@ const useSession = create(
           merged.preKey = new Uint8Array(Object.values(merged.preKey));
         }
 
-        merged.isAuthenticated = Boolean(merged.googleOauthToken && merged.userId);
-        merged.isRegistered = merged.isRegistered || merged.isAuthenticated;
+        if (merged.devKey && !(merged.devKey instanceof Uint8Array)) {
+          merged.devKey = new Uint8Array(Object.values(merged.devKey));
+        } else if (!merged.devKey) {
+          merged.devKey = new Uint8Array();
+        }
+
+        merged.isAuthenticated = Boolean(merged.googleOauthToken && merged.userId && merged.deviceId);
         merged.authProvider = merged.authProvider ?? null;
         merged.email = merged.email ?? null;
         merged.displayName = merged.displayName ?? null;
         merged.avatarUrl = merged.avatarUrl ?? null;
+        merged.deviceId = merged.deviceId ?? null;
         merged.pushToken = merged.pushToken ?? null;
         merged.pushTokenRegistered = merged.pushTokenRegistered ?? false;
 
