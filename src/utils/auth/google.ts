@@ -85,9 +85,8 @@ export async function verifyGoogleIdToken(idToken: string): Promise<{
 export async function registerDevice(
   userId: string,
   phoneDetails: { countryCode: string; number: number },
-  deviceId: string,
   fcmToken?: string | null,
-): Promise<void> {
+): Promise<string> {
   const session = useSession.getState();
   const { iKey, preKey, devKey } = await session.initSession(phoneDetails);
 
@@ -99,7 +98,7 @@ export async function registerDevice(
   const { signature: devKeySign, vrf: devKeyVrf } = await LibsignalDezireModule.vxeddsaSign(iKey, pubDevKey);
   const b64Opks = await generateOpks();
 
-  await apiRequest("/register/device", {
+  const response = await apiRequest<{ status: string; userId: string; deviceId: string }>("/register/device", {
     method: "POST",
     body: {
       user_id: userId,
@@ -109,11 +108,12 @@ export async function registerDevice(
       preKeySign: toBase64(preKeySign),
       preKeyVrf: toBase64(preKeyVrf),
       opks: b64Opks,
-      device_id: deviceId,
       signDevKey: toBase64(pubDevKey),
       devKeySign: toBase64(devKeySign),
       devKeyVrf: toBase64(devKeyVrf),
       fcmToken: fcmToken ?? undefined,
     },
   });
+
+  return response.deviceId;
 }

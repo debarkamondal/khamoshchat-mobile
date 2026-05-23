@@ -3,7 +3,6 @@ import { View, Alert, TextInput, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 
-import * as Crypto from "expo-crypto";
 import StyledButton from "@/src/components/StyledButton";
 import StyledText from "@/src/components/StyledText";
 import { useTheme, useThemedStyles } from "@/src/hooks/useTheme";
@@ -42,8 +41,7 @@ export default function Verify() {
     setIsLoading(true);
     try {
       const session = useSession.getState();
-      const deviceId = session.deviceId || Crypto.randomUUID();
-      await registerDevice(userId as string, { countryCode, number: Number(phoneNumber) }, deviceId);
+      const deviceId = await registerDevice(userId as string, { countryCode, number: Number(phoneNumber) });
       session.markDeviceRegistered(deviceId);
 
       router.replace("/");
