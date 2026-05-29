@@ -18,9 +18,3 @@ export function formatMessageTime(timestamp: number): string {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-/**
- * Validates message content.
- */
-export function validateMessage(content: string): boolean {
-    return content.trim().length > 0;
-}

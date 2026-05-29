@@ -3,7 +3,7 @@
  * Handles message publishing and topic construction.
  */
 
-// TODO: switch to npm import once published: import MqttClient from 'expo-native-mqtt';
+// WARNING: Switch to npm import once published: import MqttClient from 'expo-native-mqtt';
 import MqttClient from "expo-native-mqtt";
 
 /**
@@ -34,21 +34,5 @@ export async function publishMessage(
         console.error('MQTT publish failed:', e);
         return false;
     }
-}
-
-/**
- * Publishes a message to a recipient.
- * Convenience function that combines topic building and publishing.
- * Returns true if publish succeeded, false on failure.
- */
-export async function sendToRecipient(
-    senderUserId: string,
-    senderDeviceId: string,
-    recipientUserId: string,
-    recipientDeviceId: string,
-    payload: object
-): Promise<boolean> {
-    const topic = buildTopic(recipientUserId, recipientDeviceId, senderUserId, senderDeviceId);
-    return publishMessage(topic, JSON.stringify(payload));
 }
 

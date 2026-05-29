@@ -14,7 +14,7 @@ import "@/src/polyfills/crypto";
  * Sanitizes a chat ID for use in SecureStore keys.
  * SecureStore keys can only contain alphanumeric characters, ".", "-", and "_".
  */
-export function sanitizeChatId(chatId: string): string {
+function sanitizeChatId(chatId: string): string {
     return chatId.replace(/[^a-z0-9.\-_]/gi, '_');
 }
 

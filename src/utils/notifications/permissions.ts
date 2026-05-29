@@ -17,10 +17,3 @@ export async function requestNotificationPermission(): Promise<Notifications.Per
   return finalStatus;
 }
 
-/**
- * Checks the current push notification permission status.
- */
-export async function getNotificationPermissionStatus(): Promise<Notifications.PermissionStatus> {
-  const { status } = await Notifications.getPermissionsAsync();
-  return status;
-}

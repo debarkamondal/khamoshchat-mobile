@@ -38,6 +38,7 @@ import {
   loadRatchetSession,
   clearSession
 } from "@/src/utils/crypto";
+import { withRetry, BailoutError } from "@/src/utils/helpers/retry";
 
 
 export default function Chat() {
@@ -159,7 +160,85 @@ export default function Chat() {
     };
   }, [resolvedUUID]);
 
-  const handleSendMessage = async (msg: string, attempt = 0) => {
+  const resolveSessionAndSend = async (msg: string) => {
+    if (!resolvedUUID) {
+      // Initial Message Flow
+      const isPhone = userId.startsWith("+") || /^\d+$/.test(userId);
+      if (!isPhone) {
+        throw new Error("Invalid state: resolvedUUID is null but userId is not a phone number");
+      }
+
+      const result = await sendInitialMessage({
+        session,
+        recipientIdentifier: userId, // phone number
+        message: msg,
+        initSender: (userIdParam, sharedSecret, receiverPub, identityKey, deviceId) =>
+          initSender(userIdParam, sharedSecret, receiverPub, identityKey, deviceId),
+        encrypt: (userIdParam, plaintext, ad) => encryptMessage(userIdParam, plaintext, ad),
+      });
+
+      if (result && result.userId) {
+        setResolvedUUID(result.userId);
+      }
+      return;
+    }
+
+    // Existing Session Flow
+    let hasSession = await isRatchetInitialized(resolvedUUID);
+    if (!hasSession) {
+      await loadRatchetSession(resolvedUUID);
+      hasSession = await isRatchetInitialized(resolvedUUID);
+    }
+
+    if (hasSession) {
+      let identityKey = await getIdentityKey(resolvedUUID);
+      let deviceId = await getDeviceId(resolvedUUID);
+      
+      if (!identityKey || !deviceId) {
+        try {
+          await openChatDatabase(resolvedUUID);
+          identityKey = await getIdentityKey(resolvedUUID);
+          deviceId = await getDeviceId(resolvedUUID);
+        } catch (e) {
+          console.warn('Failed to re-open database during session recovery check:', e);
+        }
+      }
+
+      if (identityKey && deviceId) {
+        await sendMessage({
+          session,
+          recipientUserId: resolvedUUID,
+          recipientDeviceId: deviceId,
+          message: msg,
+          encrypt: (userIdParam, plaintext, ad) => encryptMessage(userIdParam, plaintext, ad),
+          recipientIdentityKey: identityKey,
+        });
+        return;
+      }
+      
+      console.warn('Session broken: missing identity key or device ID after retry. Clearing session and retrying.');
+      await clearSession(resolvedUUID);
+    }
+
+    // Re-initialize session using phone lookup if needed
+    const phone = await getContactByUserId(resolvedUUID);
+    if (!phone) {
+      throw new Error("Cannot re-initialize session: contact phone not found");
+    }
+    const result = await sendInitialMessage({
+      session,
+      recipientIdentifier: phone,
+      message: msg,
+      initSender: (userIdParam, sharedSecret, receiverPub, identityKey, deviceId) =>
+        initSender(userIdParam, sharedSecret, receiverPub, identityKey, deviceId),
+      encrypt: (userIdParam, plaintext, ad) => encryptMessage(userIdParam, plaintext, ad),
+    });
+    if (result && result.userId) {
+      setResolvedUUID(result.userId);
+    }
+  };
+
+  const handleSendMessage = async (msg: string) => {
     setIsUserNotFound(false);
     if (!msg.trim()) return;
     if (dbError) {
@@ -167,101 +246,38 @@ export default function Chat() {
       return;
     }
 
-    // Clear input immediately
-    if (attempt === 0) {
-      setMessage("");
-      scrollToBottom();
-    }
+    setMessage("");
+    scrollToBottom();
 
     try {
-      if (resolvedUUID) {
-        // Existing Session Flow
-        let hasSession = await isRatchetInitialized(resolvedUUID);
-        if (!hasSession) {
-          await loadRatchetSession(resolvedUUID);
-          hasSession = await isRatchetInitialized(resolvedUUID);
-        }
+      await withRetry(
+        async () => {
+          try {
+            await resolveSessionAndSend(msg);
+          } catch (error: any) {
+            const isRecoverableStorageError = error instanceof StorageError && error.recoverable;
+            const isRetryableError = error instanceof OutboxPersistError || isRecoverableStorageError;
 
-        if (hasSession) {
-          let identityKey = await getIdentityKey(resolvedUUID);
-          let deviceId = await getDeviceId(resolvedUUID);
-          
-          if (!identityKey || !deviceId) {
-            // Keys missing — try to re-open DB and retry once
-            try {
-              await openChatDatabase(resolvedUUID);
-              identityKey = await getIdentityKey(resolvedUUID);
-              deviceId = await getDeviceId(resolvedUUID);
-            } catch (e) {
-              console.warn('Failed to re-open database during session recovery check:', e);
+            if (isRetryableError) {
+              throw error; // Let withRetry handle it
+            } else {
+              throw new BailoutError(error); // Wrap to stop withRetry
             }
           }
-
-          if (!identityKey || !deviceId) {
-            console.warn('Session broken: missing identity key or device ID after retry. Clearing session and retrying.');
-            await clearSession(resolvedUUID);
-            hasSession = false;
-          } else {
-            await sendMessage({
-              session,
-              recipientUserId: resolvedUUID,
-              recipientDeviceId: deviceId,
-              message: msg,
-              encrypt: (userIdParam, plaintext, ad) => encryptMessage(userIdParam, plaintext, ad),
-              recipientIdentityKey: identityKey,
-            });
-          }
-        }
-
-        if (!hasSession) {
-          // Re-initialize session using phone lookup if needed
-          const phone = await getContactByUserId(resolvedUUID);
-          if (!phone) {
-            throw new Error("Cannot re-initialize session: contact phone not found");
-          }
-          const result = await sendInitialMessage({
-            session,
-            recipientIdentifier: phone,
-            message: msg,
-            initSender: (userIdParam, sharedSecret, receiverPub, identityKey, deviceId) =>
-              initSender(userIdParam, sharedSecret, receiverPub, identityKey, deviceId),
-            encrypt: (userIdParam, plaintext, ad) => encryptMessage(userIdParam, plaintext, ad),
-          });
-          if (result && result.userId) {
-            setResolvedUUID(result.userId);
-          }
-        }
-      } else {
-        // Initial Message Flow (resolvedUUID is null, userId route param is phone number)
-        const isPhone = userId.startsWith("+") || /^\d+$/.test(userId);
-        if (!isPhone) {
-          throw new Error("Invalid state: resolvedUUID is null but userId is not a phone number");
-        }
-
-        const result = await sendInitialMessage({
-          session,
-          recipientIdentifier: userId, // this is the phone number
-          message: msg,
-          initSender: (userIdParam, sharedSecret, receiverPub, identityKey, deviceId) =>
-            initSender(userIdParam, sharedSecret, receiverPub, identityKey, deviceId),
-          encrypt: (userIdParam, plaintext, ad) => encryptMessage(userIdParam, plaintext, ad),
-        });
-
-        if (result && result.userId) {
-          setResolvedUUID(result.userId);
-        }
-      }
+        },
+        { maxAttempts: 3, initialDelay: 500, backoffFactor: 1 }
+      );
     } catch (error: any) {
       if (error instanceof UserNotFoundError) {
         setIsUserNotFound(true);
-        if (attempt === 0) setMessage(msg); // restore drafted message
+        setMessage(msg); // restore drafted message
       } else if (error instanceof BundleFetchError) {
         Alert.alert(
           'Offline',
           'You must be online to start a new conversation. Please check your connection and try again.',
           [{ text: 'OK', style: 'cancel' }]
         );
-        if (attempt === 0) setMessage(msg);
+        setMessage(msg);
       } else if (error instanceof EncryptionError) {
         console.error('Encryption failed:', error);
         Alert.alert(
@@ -269,13 +285,7 @@ export default function Chat() {
           'Could not encrypt your message. The session may be corrupted.',
           [{ text: 'OK', style: 'cancel' }]
         );
-        if (attempt === 0) setMessage(msg);
-      } else if (error instanceof OutboxPersistError && attempt < 3) {
-        console.warn(`Outbox persist failed (attempt ${attempt + 1}/3), retrying...`);
-        setTimeout(() => handleSendMessage(msg, attempt + 1), 500 * (attempt + 1));
-      } else if (error instanceof StorageError && error.recoverable && attempt < 3) {
-        console.warn(`Recoverable send error (attempt ${attempt + 1}/3):`, error.code);
-        setTimeout(() => handleSendMessage(msg, attempt + 1), 500 * (attempt + 1));
+        setMessage(msg);
       } else {
         console.error('Failed to send message:', error);
         Alert.alert(
@@ -283,7 +293,7 @@ export default function Chat() {
           error?.message || 'Your message could not be sent. Please try again.',
           [{ text: 'OK', style: 'cancel' }]
         );
-        if (attempt === 0) setMessage(msg);
+        setMessage(msg);
       }
     }
   };
@@ -338,6 +348,27 @@ export default function Chat() {
       shadowRadius: 4,
       elevation: 4,
     },
+    dbErrorContainer: {
+      flex: 1,
+      justifyContent: 'center' as const,
+      alignItems: 'center' as const,
+      padding: 32,
+    },
+    dbErrorText: {
+      color: colors.error,
+      textAlign: 'center' as const,
+    },
+    userNotFoundContainer: {
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      alignItems: 'center' as const,
+      backgroundColor: colors.surface,
+    },
+    userNotFoundText: {
+      color: colors.onSurfaceVariant as string,
+      textAlign: 'center' as const,
+      fontSize: 13,
+    },
   }));
 
   // Insets-dependent styles (memoized by insets)
@@ -362,8 +393,8 @@ export default function Chat() {
       </View>
 
       {dbError ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
-          <StyledText style={{ color: colors.error, textAlign: 'center' }}>
+        <View style={themedStyles.dbErrorContainer}>
+          <StyledText style={themedStyles.dbErrorText}>
             {dbError}
           </StyledText>
         </View>
@@ -392,11 +423,10 @@ export default function Chat() {
         </Pressable>
       )}
       {isUserNotFound && (
-        <View style={{ paddingVertical: 8, paddingHorizontal: 16, alignItems: 'center', backgroundColor: colors.surface }}>
-          <StyledText style={{ color: colors.onSurfaceVariant as string, textAlign: 'center', fontSize: 13 }}>
+        <View style={themedStyles.userNotFoundContainer}>
+          <StyledText style={themedStyles.userNotFoundText}>
             This Contact isn&apos;t using KhamoshChat yet.
           </StyledText>
-          {/* TODO: Add ways to invite non-customers to the platform */}
         </View>
       )}
 

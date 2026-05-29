@@ -3,7 +3,7 @@
  * Maps phone numbers to server-assigned UUIDs (user_id).
  */
 
-import { getPrimaryDatabase } from './database';
+import { openPrimaryDatabase } from './database';
 
 export interface ContactMapping {
     phone: string;
@@ -15,7 +15,7 @@ export interface ContactMapping {
  * Saves or updates a mapping between phone number and UUID.
  */
 export async function saveContact(phone: string, userId: string): Promise<void> {
-    const db = await getPrimaryDatabase();
+    const db = await openPrimaryDatabase();
     const now = Date.now();
 
     await db.runAsync(
@@ -34,7 +34,7 @@ export async function saveContact(phone: string, userId: string): Promise<void> 
  * Resolves a phone number to a server UUID.
  */
 export async function getContactByPhone(phone: string): Promise<string | undefined> {
-    const db = await getPrimaryDatabase();
+    const db = await openPrimaryDatabase();
     const row = await db.getFirstAsync<{ user_id: string }>(
         'SELECT user_id FROM contacts WHERE phone = ?',
         phone
@@ -46,7 +46,7 @@ export async function getContactByPhone(phone: string): Promise<string | undefin
  * Resolves a server UUID to a phone number.
  */
 export async function getContactByUserId(userId: string): Promise<string | undefined> {
-    const db = await getPrimaryDatabase();
+    const db = await openPrimaryDatabase();
     const row = await db.getFirstAsync<{ phone: string }>(
         'SELECT phone FROM contacts WHERE user_id = ?',
         userId

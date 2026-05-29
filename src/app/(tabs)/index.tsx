@@ -146,6 +146,14 @@ export default function Index() {
       justifyContent: "center" as const,
       alignItems: "center" as const,
     },
+    errorText: {
+      color: colors.error,
+      textAlign: 'center' as const,
+      paddingHorizontal: 32,
+    },
+    statusText: {
+      color: colors.outline,
+    },
   }));
 
   // FAB position style
@@ -212,17 +220,17 @@ export default function Index() {
 
   const emptyContent = storageError ? (
     <View style={themedStyles.emptyContent}>
-      <StyledText style={{ color: colors.error, textAlign: 'center', paddingHorizontal: 32 }}>
+      <StyledText style={themedStyles.errorText}>
         {storageError}
       </StyledText>
     </View>
   ) : isLoading ? (
     <View style={themedStyles.emptyContent}>
-      <StyledText style={{ color: colors.outline }}>Loading chats...</StyledText>
+      <StyledText style={themedStyles.statusText}>Loading chats...</StyledText>
     </View>
   ) : (
     <View style={themedStyles.emptyContent}>
-      <StyledText style={{ color: colors.outline }}>No conversations yet</StyledText>
+      <StyledText style={themedStyles.statusText}>No conversations yet</StyledText>
     </View>
   );
 

@@ -42,7 +42,7 @@ export async function processIncomingMessage(
         const result = await receiveInitialMessage({
             session,
             payload,
-            senderUserId: senderUserId, // TODO rename prop in receiveInitialMessage
+            senderUserId: senderUserId,
             initReceiver: (sharedSecret, receiverPriv, receiverPub, identityKey) =>
                 initReceiver(senderUserId, sharedSecret, receiverPriv, receiverPub, identityKey!, senderDeviceId),
             decrypt: (header, ciphertext, ad) =>
@@ -68,7 +68,9 @@ export async function processIncomingMessage(
         }
 
         return result.plaintext;
-    } else if (payload.ciphertext && payload.header) {
+    } 
+    
+    if (payload.ciphertext && payload.header) {
         // Subsequent message — ratchet already initialized
         const identityKey = await getIdentityKey(senderUserId);
         if (!identityKey) {
@@ -78,7 +80,7 @@ export async function processIncomingMessage(
         const result = await receiveMessage({
             session,
             payload,
-            senderUserId: senderUserId, // TODO rename prop in receiveMessage
+            senderUserId: senderUserId,
             senderIdentityKey: identityKey,
             decrypt: (header, ciphertext, ad) =>
                 decryptMessage(senderUserId, header, ciphertext, ad),
@@ -88,7 +90,7 @@ export async function processIncomingMessage(
             throw new Error(`Failed to decrypt subsequent message from ${senderUserId}`);
         }
         return result.plaintext;
-    } else {
-        throw new Error(`Unrecognized message payload shape from ${senderUserId}`);
-    }
+    } 
+    
+    throw new Error(`Unrecognized message payload shape from ${senderUserId}`);
 }

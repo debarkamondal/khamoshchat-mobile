@@ -10,7 +10,7 @@ import { fromBase64 } from '../helpers/encoding';
  * Constructs Associated Data from sender and receiver identity public keys.
  * AD = sender_identity_pub || receiver_identity_pub
  */
-export function constructAD(
+function constructAD(
     senderIdentityPub: Uint8Array,
     receiverIdentityPub: Uint8Array
 ): Uint8Array {

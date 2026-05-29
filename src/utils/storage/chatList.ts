@@ -7,7 +7,7 @@
  * appropriate feedback.
  */
 
-import { getPrimaryDatabase } from './database';
+import { openPrimaryDatabase } from './database';
 
 /**
  * Chat thread entry for the home screen list.
@@ -50,7 +50,7 @@ function notifyChatListListeners(): void {
  * @throws StorageError on write failure
  */
 export async function upsertChatThread(userId: string, lastMessage: string, phone?: string | null): Promise<void> {
-    const db = await getPrimaryDatabase();
+    const db = await openPrimaryDatabase();
     const now = Date.now();
 
     let resolvedPhone = phone || null;
@@ -86,19 +86,9 @@ export async function upsertChatThread(userId: string, lastMessage: string, phon
  * @throws StorageError on read failure
  */
 export async function getChatThreads(): Promise<ChatThread[]> {
-    const db = await getPrimaryDatabase();
+    const db = await openPrimaryDatabase();
     return db.getAllAsync<ChatThread>(
         'SELECT * FROM chats ORDER BY updated_at DESC'
     );
 }
 
-/**
- * Deletes a chat thread from the list.
- *
- * @throws StorageError on write failure
- */
-export async function deleteChatThread(userId: string): Promise<void> {
-    const db = await getPrimaryDatabase();
-    await db.runAsync('DELETE FROM chats WHERE user_id = ?', userId);
-    notifyChatListListeners();
-}

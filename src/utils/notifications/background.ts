@@ -17,48 +17,47 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error, execu
     return;
   }
 
-  if (data) {
-    try {
-      const pushEvent = data as { notification?: any; data?: any };
-      let payloadData = pushEvent.notification?.request?.content?.data || pushEvent.data;
+  if (!data) {
+    return;
+  }
 
-      if (!payloadData) {
-        return;
-      }
+  try {
+    const pushEvent = data as { notification?: any; data?: any };
+    const payloadData = pushEvent.notification?.request?.content?.data || pushEvent.data;
 
-      const { topic, payload, sender } = payloadData;
-      
-      if (!topic || !payload) {
-        if (sender) {
-          await showMessageNotification(sender, 'New message', { topic });
-        } else {
-           await showMessageNotification('Unknown', 'New message');
-        }
-        return;
-      }
-
-      const session = useSession.getState() as Session;
-
-      if (!session || !session.iKey || session.iKey.length === 0) {
-         await showMessageNotification(sender || 'Unknown', 'New message', { topic });
-        return;
-      }
-
-      const inboxId = await saveToInbox(topic, payload);
-      
-      try {
-        const decryptedPlaintext = await processIncomingMessage(session, topic, payload);
-        if (inboxId) {
-          await markInboxProcessed(inboxId);
-        }
-
-        await showMessageNotification(sender || topic, decryptedPlaintext, { topic });
-      } catch {
-          await showMessageNotification(sender || topic, 'New message received', { topic });
-      }
-
-    } catch (err) {
-      console.error('[Background Task] Error executing processing:', err);
+    if (!payloadData) {
+      return;
     }
+
+    const { topic, payload, sender } = payloadData;
+    
+    if (!topic || !payload) {
+      const displaySender = sender || 'Unknown';
+      await showMessageNotification(displaySender, 'New message', { topic });
+      return;
+    }
+
+    const session = useSession.getState() as Session;
+
+    if (!session || !session.iKey || session.iKey.length === 0) {
+       await showMessageNotification(sender || 'Unknown', 'New message', { topic });
+      return;
+    }
+
+    const inboxId = await saveToInbox(topic, payload);
+    
+    try {
+      const decryptedPlaintext = await processIncomingMessage(session, topic, payload);
+      if (inboxId) {
+        await markInboxProcessed(inboxId);
+      }
+
+      await showMessageNotification(sender || topic, decryptedPlaintext, { topic });
+    } catch {
+        await showMessageNotification(sender || topic, 'New message received', { topic });
+    }
+
+  } catch (err) {
+    console.error('[Background Task] Error executing processing:', err);
   }
 });

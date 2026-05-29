@@ -11,7 +11,7 @@ import {
     DatabaseCorruptedError,
     DatabaseConnectionError,
 } from './errors';
-
+import { withRetry } from '../helpers/retry';
 const PRIMARY_CHAT_ID = '__primary__';
 
 /**
@@ -163,27 +163,6 @@ export async function openPrimaryDatabase(): Promise<SQLite.SQLiteDatabase> {
     return db;
 }
 
-/**
- * Returns the primary database, opening it if needed.
- */
-export async function getPrimaryDatabase(): Promise<SQLite.SQLiteDatabase> {
-    return openPrimaryDatabase();
-}
-
-/**
- * Closes the primary database connection.
- */
-export async function closePrimaryDatabase(): Promise<void> {
-    if (primaryDb) {
-        try {
-            await primaryDb.closeAsync();
-        } catch (e) {
-            console.warn('Failed to close primary database', e);
-        } finally {
-            primaryDb = null;
-        }
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Health management (AppState resume)
@@ -214,39 +193,31 @@ export async function reopenAllDatabases(): Promise<void> {
 
         if (!healthy) {
             // Try to close the stale handle (best-effort)
-            try { await primaryDb.closeAsync(); } catch { /* already dead */ }
+            try { await primaryDb.closeAsync(); } catch (e) { console.debug('Primary DB already dead', e); }
             primaryDb = null;
             
-            let reopened = false;
-            for (let attempt = 0; attempt < 3 && !reopened; attempt++) {
-                if (attempt > 0) {
-                    await new Promise((resolve) => setTimeout(resolve, 150 * attempt));
-                }
-                try {
-                    await openPrimaryDatabase();
-                    reopened = true;
-                } catch (e) {
-                    if (attempt === 2) {
-                        console.error('Failed to reopen primary database after resume:', e);
-                    }
-                }
+            try {
+                await withRetry(
+                    async () => {
+                        await openPrimaryDatabase();
+                    },
+                    { maxAttempts: 3, initialDelay: 150, backoffFactor: 1 }
+                );
+            } catch (e) {
+                console.error('Failed to reopen primary database after resume:', e);
             }
         }
     } else {
         // Primary DB was never opened or was closed — ensure it's available
-        let opened = false;
-        for (let attempt = 0; attempt < 3 && !opened; attempt++) {
-            if (attempt > 0) {
-                await new Promise((resolve) => setTimeout(resolve, 150 * attempt));
-            }
-            try {
-                await openPrimaryDatabase();
-                opened = true;
-            } catch (e) {
-                if (attempt === 2) {
-                    console.error('Failed to open primary database on resume:', e);
-                }
-            }
+        try {
+            await withRetry(
+                async () => {
+                    await openPrimaryDatabase();
+                },
+                { maxAttempts: 3, initialDelay: 150, backoffFactor: 1 }
+            );
+        } catch (e) {
+            console.error('Failed to open primary database on resume:', e);
         }
     }
 
@@ -260,7 +231,7 @@ export async function reopenAllDatabases(): Promise<void> {
         }
 
         if (!healthy) {
-            try { await db.closeAsync(); } catch { /* already dead */ }
+            try { await db.closeAsync(); } catch (e) { console.debug('Per-chat DB already dead', e); }
             activeDatabases.delete(chatId);
         }
     }

@@ -46,7 +46,7 @@ export default function Verify() {
 
       router.replace("/");
     } catch (error) {
-      console.log("Error verifying profile", error);
+      console.error("Error verifying profile", error);
       Alert.alert(
         "Registration failed",
         error instanceof Error ? error.message : "Something went wrong."

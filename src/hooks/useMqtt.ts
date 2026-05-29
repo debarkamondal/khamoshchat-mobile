@@ -1,4 +1,4 @@
-// TODO: switch to npm import once published: import MqttClient from 'expo-native-mqtt';
+// WARNING: Switch to npm import once published: import MqttClient from 'expo-native-mqtt';
 import MqttClient from "expo-native-mqtt";
 import { useEffect } from "react";
 import { Alert } from "react-native";
@@ -66,12 +66,13 @@ async function processOutboxEntry(
         if (success) {
             await markOutboxSent(entry.id);
             await updateMessageStatusWithAutoOpen(entry.chat_id, entry.message_id, 'sent');
-        } else {
-            // Publish returned false — recoverable (network issue)
-            await incrementOutboxRetry(entry.id);
-            if (entry.retry_count + 1 >= 5) {
-                await updateMessageStatusWithAutoOpen(entry.chat_id, entry.message_id, 'failed');
-            }
+            return;
+        }
+        
+        // Publish returned false — recoverable (network issue)
+        await incrementOutboxRetry(entry.id);
+        if (entry.retry_count + 1 >= 5) {
+            await updateMessageStatusWithAutoOpen(entry.chat_id, entry.message_id, 'failed');
         }
     } catch (e) {
         console.error(`Failed to process outbox entry ${entry.id}:`, e);
@@ -82,8 +83,8 @@ async function processOutboxEntry(
             try {
                 await markOutboxFailed(entry.id);
                 await updateMessageStatusWithAutoOpen(entry.chat_id, entry.message_id, 'failed');
-            } catch {
-                // Best-effort — DB may be unavailable
+            } catch (innerE) {
+                console.warn('[MQTT] Best-effort outbox update failed', innerE);
             }
             return;
         }
@@ -94,8 +95,8 @@ async function processOutboxEntry(
             if (entry.retry_count + 1 >= 5) {
                 await updateMessageStatusWithAutoOpen(entry.chat_id, entry.message_id, 'failed');
             }
-        } catch {
-            // Best-effort — DB may be unavailable
+        } catch (innerE) {
+            console.warn('[MQTT] Best-effort outbox update failed', innerE);
         }
     }
 }
@@ -108,7 +109,7 @@ export async function processOutboxRetries(): Promise<void> {
     try {
         const pending = await getPendingOutboxEntries();
         if (pending.length > 0) {
-            console.log(`Processing ${pending.length} pending outbox entries...`);
+            console.debug(`Processing ${pending.length} pending outbox entries...`);
         }
         for (const entry of pending) {
             await processOutboxEntry(entry);
@@ -157,13 +158,13 @@ const useMqtt = (topic: string) => {
 
                 // 2. Handle Connection/Error Events
                 const connectSub = MqttClient.addListener("onMqttConnected", async () => {
-                    console.log(`Connected to MQTT broker for topic: ${topic}`);
+                    console.debug(`Connected to MQTT broker for topic: ${topic}`);
                     setConnected(true);
 
                     const topicPath = `/khamoshchat/${session.userId}/${session.deviceId}/#`;
                     try {
                         await MqttClient.subscribe(topicPath, 1);
-                        console.log(`Subscribed to ${topicPath}`);
+                        console.debug(`Subscribed to ${topicPath}`);
                     } catch (e) {
                         console.error(`Failed to subscribe to ${topicPath}:`, e);
                     }
@@ -174,7 +175,7 @@ const useMqtt = (topic: string) => {
                 subscriptions.push(connectSub);
 
                 const disconnectSub = MqttClient.addListener("onMqttDisconnected", () => {
-                    console.log("MQTT Client disconnected.");
+                    console.debug("MQTT Client disconnected.");
                     setConnected(false);
                 });
                 subscriptions.push(disconnectSub);

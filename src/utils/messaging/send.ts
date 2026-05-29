@@ -89,7 +89,8 @@ async function attemptPublish(
         await markOutboxSent(outboxId);
         try {
             await updateMessageStatus(chatId, messageId, 'sent');
-        } catch {
+        } catch (e) {
+            console.warn(`[Send] Best-effort message status update failed (chat DB may be closed):`, e);
             // Chat DB may not be open (background context) — that's OK,
             // the status will be updated via updateMessageStatusWithAutoOpen
             // during outbox retry processing.

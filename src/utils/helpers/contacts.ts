@@ -19,46 +19,43 @@ export type SplitContact = {
 export async function getContacts(): Promise<SplitContact[] | null> {
     const splitContacts: SplitContact[] = [];
     const { status } = await Contacts.requestPermissionsAsync();
-    if (status === "granted") {
-        const { data } = await Contacts.getContactsAsync({
-            fields: ["firstName", "lastName", "phoneNumbers"],
-            sort: "firstName",
-        });
-        
-        const seenNumbers = new Set<string>();
+    
+    if (status !== "granted") {
+        return splitContacts;
+    }
 
-        for (let i = 0; i < data.length; i++) {
-            const contact = data[i];
+    const { data } = await Contacts.getContactsAsync({
+        fields: ["firstName", "lastName", "phoneNumbers"],
+        sort: "firstName",
+    });
+    
+    const seenNumbers = new Set<string>();
 
-            if (
-                contact.phoneNumbers &&
-                Array.isArray(contact.phoneNumbers) &&
-                contact.phoneNumbers.length > 0
-            ) {
-                for (
-                    let j = 0;
-                    j < contact.phoneNumbers.length;
-                    j++
-                ) {
-                    const numbers = contact.phoneNumbers[j];
-                    if (!numbers || !numbers.number) continue;
+    for (let i = 0; i < data.length; i++) {
+        const contact = data[i];
 
-                    // Normalize phone number to eliminate duplicates
-                    const normalized = numbers.number.replace(/[^0-9+]/g, "");
-                    if (!normalized) continue;
+        if (!contact.phoneNumbers || !Array.isArray(contact.phoneNumbers) || contact.phoneNumbers.length === 0) {
+            continue;
+        }
 
-                    if (seenNumbers.has(normalized)) continue;
-                    seenNumbers.add(normalized);
+        for (let j = 0; j < contact.phoneNumbers.length; j++) {
+            const numbers = contact.phoneNumbers[j];
+            if (!numbers || !numbers.number) continue;
 
-                    splitContacts.push({
-                        firstName: contact.firstName ?? (numbers.number as string),
-                        lastName: contact.lastName,
-                        id: contact.id + "/" + j,
-                        number: numbers.number,
-                        label: numbers.label ?? "mobile",
-                    });
-                }
-            }
+            // Normalize phone number to eliminate duplicates
+            const normalized = numbers.number.replace(/[^0-9+]/g, "");
+            if (!normalized) continue;
+
+            if (seenNumbers.has(normalized)) continue;
+            seenNumbers.add(normalized);
+
+            splitContacts.push({
+                firstName: contact.firstName ?? (numbers.number as string),
+                lastName: contact.lastName,
+                id: contact.id + "/" + j,
+                number: numbers.number,
+                label: numbers.label ?? "mobile",
+            });
         }
     }
     return splitContacts;

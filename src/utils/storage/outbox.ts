@@ -15,7 +15,7 @@
  * The outbox stores encrypted ciphertext — no additional plaintext exposure.
  */
 
-import { getPrimaryDatabase } from './database';
+import { openPrimaryDatabase } from './database';
 
 const MAX_RETRIES = 5;
 
@@ -48,7 +48,7 @@ export async function saveToOutbox(
     topic: string,
     payload: string
 ): Promise<number> {
-    const db = await getPrimaryDatabase();
+    const db = await openPrimaryDatabase();
     const result = await db.runAsync(
         `INSERT INTO outbox (chat_id, message_id, payload, topic, created_at, status, retry_count)
          VALUES (?, ?, ?, ?, ?, 'pending', 0)`,
@@ -65,7 +65,7 @@ export async function saveToOutbox(
  * Marks an outbox entry as successfully sent.
  */
 export async function markOutboxSent(id: number): Promise<void> {
-    const db = await getPrimaryDatabase();
+    const db = await openPrimaryDatabase();
     await db.runAsync(
         `UPDATE outbox SET status = 'sent', sent_at = ? WHERE id = ?`,
         Date.now(),
@@ -77,7 +77,7 @@ export async function markOutboxSent(id: number): Promise<void> {
  * Marks an outbox entry as permanently failed (exceeded max retries).
  */
 export async function markOutboxFailed(id: number): Promise<void> {
-    const db = await getPrimaryDatabase();
+    const db = await openPrimaryDatabase();
     await db.runAsync(
         `UPDATE outbox SET status = 'failed', sent_at = ? WHERE id = ?`,
         Date.now(),
@@ -90,7 +90,7 @@ export async function markOutboxFailed(id: number): Promise<void> {
  * Automatically marks as 'failed' if MAX_RETRIES is exceeded.
  */
 export async function incrementOutboxRetry(id: number): Promise<void> {
-    const db = await getPrimaryDatabase();
+    const db = await openPrimaryDatabase();
     await db.runAsync(
         `UPDATE outbox
          SET retry_count = retry_count + 1,
@@ -108,7 +108,7 @@ export async function incrementOutboxRetry(id: number): Promise<void> {
  * Returns all outbox entries that are pending retry.
  */
 export async function getPendingOutboxEntries(): Promise<OutboxEntry[]> {
-    const db = await getPrimaryDatabase();
+    const db = await openPrimaryDatabase();
     return db.getAllAsync<OutboxEntry>(
         `SELECT * FROM outbox WHERE status = 'pending'
          ORDER BY created_at ASC`
@@ -125,7 +125,7 @@ export async function getPendingOutboxEntries(): Promise<OutboxEntry[]> {
  * Default: prune entries older than 7 days.
  */
 export async function pruneOutbox(olderThanMs: number = 7 * 24 * 60 * 60 * 1000): Promise<void> {
-    const db = await getPrimaryDatabase();
+    const db = await openPrimaryDatabase();
     const cutoff = Date.now() - olderThanMs;
     await db.runAsync(
         `DELETE FROM outbox

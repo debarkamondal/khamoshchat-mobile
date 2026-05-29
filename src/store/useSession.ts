@@ -38,7 +38,7 @@ export type Session = {
     displayName: string | null;
     avatarUrl: string | null;
   }) => void;
-  clearAuthenticatedUser: () => Promise<void>;
+
 };
 
 const useSession = create(
@@ -82,18 +82,7 @@ const useSession = create(
           avatarUrl,
         });
       },
-      clearAuthenticatedUser: async () => {
-        set({
-          isAuthenticated: false,
-          authProvider: null,
-          googleOauthToken: null,
-          userId: null,
-          deviceId: null,
-          email: null,
-          displayName: null,
-          avatarUrl: null,
-        });
-      },
+
       clearSession: async () => {
         set({
           isAuthenticated: false,

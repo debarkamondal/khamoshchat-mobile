@@ -16,7 +16,7 @@
  * ratchet session, so there is no additional plaintext exposure risk.
  */
 
-import { getPrimaryDatabase } from './database';
+import { openPrimaryDatabase } from './database';
 
 const MAX_RETRIES = 5;
 
@@ -42,7 +42,7 @@ export interface InboxEntry {
  * Returns the new row id.
  */
 export async function saveToInbox(topic: string, payload: string): Promise<number> {
-    const db = await getPrimaryDatabase();
+    const db = await openPrimaryDatabase();
     const result = await db.runAsync(
         `INSERT INTO inbox (topic, payload, received_at, status, retry_count)
          VALUES (?, ?, ?, 'pending', 0)`,
@@ -57,7 +57,7 @@ export async function saveToInbox(topic: string, payload: string): Promise<numbe
  * Marks an inbox entry as successfully processed.
  */
 export async function markInboxProcessed(id: number): Promise<void> {
-    const db = await getPrimaryDatabase();
+    const db = await openPrimaryDatabase();
     await db.runAsync(
         `UPDATE inbox SET status = 'processed', processed_at = ? WHERE id = ?`,
         Date.now(),
@@ -65,24 +65,13 @@ export async function markInboxProcessed(id: number): Promise<void> {
     );
 }
 
-/**
- * Marks an inbox entry as permanently failed (exceeded max retries).
- */
-export async function markInboxFailed(id: number): Promise<void> {
-    const db = await getPrimaryDatabase();
-    await db.runAsync(
-        `UPDATE inbox SET status = 'failed', processed_at = ? WHERE id = ?`,
-        Date.now(),
-        id
-    );
-}
 
 /**
  * Increments the retry counter for a pending entry.
  * Automatically marks as 'failed' if MAX_RETRIES is exceeded.
  */
 export async function incrementInboxRetry(id: number): Promise<void> {
-    const db = await getPrimaryDatabase();
+    const db = await openPrimaryDatabase();
     await db.runAsync(
         `UPDATE inbox
          SET retry_count = retry_count + 1,
@@ -100,7 +89,7 @@ export async function incrementInboxRetry(id: number): Promise<void> {
  * Returns all inbox entries that are pending retry.
  */
 export async function getPendingInboxEntries(): Promise<InboxEntry[]> {
-    const db = await getPrimaryDatabase();
+    const db = await openPrimaryDatabase();
     return db.getAllAsync<InboxEntry>(
         `SELECT * FROM inbox WHERE status = 'pending'
          ORDER BY received_at ASC`
@@ -117,7 +106,7 @@ export async function getPendingInboxEntries(): Promise<InboxEntry[]> {
  * Default: prune entries older than 7 days.
  */
 export async function pruneInbox(olderThanMs: number = 7 * 24 * 60 * 60 * 1000): Promise<void> {
-    const db = await getPrimaryDatabase();
+    const db = await openPrimaryDatabase();
     const cutoff = Date.now() - olderThanMs;
     await db.runAsync(
         `DELETE FROM inbox

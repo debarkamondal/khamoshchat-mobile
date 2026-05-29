@@ -33,9 +33,3 @@ export async function showMessageNotification(sender: string, body: string, data
   });
 }
 
-/**
- * Update the app badge count.
- */
-export async function setBadgeCount(count: number) {
-  await Notifications.setBadgeCountAsync(count);
-}

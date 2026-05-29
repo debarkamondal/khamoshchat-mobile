@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import useSession from '@/src/store/useSession';
 import { apiRequest, ApiError } from '@/src/utils/transport/api';
+import { withRetry, BailoutError } from '@/src/utils/helpers/retry';
 
 /**
  * Retrieves the raw FCM or APNs device push token.
@@ -17,43 +18,31 @@ export async function fetchDeviceToken(): Promise<string | null> {
   }
 }
 
-async function apiRequestWithBackoff<T>(
-  path: string,
-  options: any,
-  maxRetries = 5
-): Promise<T> {
-  let attempt = 0;
-  let delay = 1000;
-  while (attempt < maxRetries) {
-    try {
-      return await apiRequest<T>(path, options);
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        throw error;
-      }
-      attempt++;
-      if (attempt >= maxRetries) throw error;
-      const jitter = Math.random() * 500;
-      await new Promise(r => setTimeout(r, delay + jitter));
-      delay = Math.min(delay * 2, 10000);
-    }
-  }
-  throw new Error(`Failed after ${maxRetries} attempts`);
-}
-
 export async function registerTokenWithBackend(
   deviceToken: string
 ): Promise<boolean> {
   const session = useSession.getState();
   try {
-    await apiRequestWithBackoff("/register/device/fcm", {
-      method: "POST",
-      authenticated: true,
-      body: {
-        deviceId: session.deviceId,
-        fcmToken: deviceToken,
+    await withRetry(
+      async () => {
+        try {
+          return await apiRequest("/register/device/fcm", {
+            method: "POST",
+            authenticated: true,
+            body: {
+              deviceId: session.deviceId,
+              fcmToken: deviceToken,
+            },
+          });
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 404) {
+            throw new BailoutError(error);
+          }
+          throw error;
+        }
       },
-    });
+      { maxAttempts: 5, initialDelay: 1000, backoffFactor: 2 }
+    );
     return true;
   } catch (e) {
     console.error("[Push Token] Failed to register FCM token:", e);

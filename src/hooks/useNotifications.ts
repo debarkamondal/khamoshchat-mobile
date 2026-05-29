@@ -50,7 +50,7 @@ export default function useNotifications(isAuthenticated: boolean) {
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
-      const senderId = data?.sender_id || data?.sender;
+      const senderId = (data?.sender_id || data?.sender) as string | undefined;
       if (senderId) {
         getContactByUserId(senderId)
           .then(phone => {
