@@ -50,7 +50,7 @@ export async function registerTokenWithBackend(
       method: "POST",
       authenticated: true,
       body: {
-        device_id: session.deviceId,
+        deviceId: session.deviceId,
         fcmToken: deviceToken,
       },
     });

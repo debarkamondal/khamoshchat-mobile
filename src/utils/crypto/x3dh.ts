@@ -4,11 +4,12 @@
  */
 
 import LibsignalDezireModule from '@/modules/libsignal-dezire/src/LibsignalDezireModule';
-import { toBase64, fromBase64 } from '../helpers/encoding';
+import { fromBase64 } from '../helpers/encoding';
 import { Session } from '@/src/store/useSession';
 
 export type PreKeyBundle = {
     userId: string;
+    phone: string;
     deviceId: string;
     identityKey: string;
     signature: string;

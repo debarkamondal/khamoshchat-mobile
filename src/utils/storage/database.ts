@@ -216,18 +216,37 @@ export async function reopenAllDatabases(): Promise<void> {
             // Try to close the stale handle (best-effort)
             try { await primaryDb.closeAsync(); } catch { /* already dead */ }
             primaryDb = null;
-            try {
-                await openPrimaryDatabase();
-            } catch (e) {
-                console.error('Failed to reopen primary database after resume:', e);
+            
+            let reopened = false;
+            for (let attempt = 0; attempt < 3 && !reopened; attempt++) {
+                if (attempt > 0) {
+                    await new Promise((resolve) => setTimeout(resolve, 150 * attempt));
+                }
+                try {
+                    await openPrimaryDatabase();
+                    reopened = true;
+                } catch (e) {
+                    if (attempt === 2) {
+                        console.error('Failed to reopen primary database after resume:', e);
+                    }
+                }
             }
         }
     } else {
         // Primary DB was never opened or was closed — ensure it's available
-        try {
-            await openPrimaryDatabase();
-        } catch (e) {
-            console.error('Failed to open primary database on resume:', e);
+        let opened = false;
+        for (let attempt = 0; attempt < 3 && !opened; attempt++) {
+            if (attempt > 0) {
+                await new Promise((resolve) => setTimeout(resolve, 150 * attempt));
+            }
+            try {
+                await openPrimaryDatabase();
+                opened = true;
+            } catch (e) {
+                if (attempt === 2) {
+                    console.error('Failed to open primary database on resume:', e);
+                }
+            }
         }
     }
 
@@ -251,105 +270,85 @@ export async function reopenAllDatabases(): Promise<void> {
 // Migrations
 // ---------------------------------------------------------------------------
 
-/**
- * Schema migration for per-chat databases.
- */
 async function migrateDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
-    const DATABASE_VERSION = 2;
-    const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-    const currentVersion = result?.user_version ?? 0;
+    await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS messages (
+            id TEXT PRIMARY KEY NOT NULL,
+            content TEXT,
+            sender_id TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            status TEXT DEFAULT 'sent'
+        );
 
-    if (currentVersion >= DATABASE_VERSION) {
-        return;
-    }
+        CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
 
-    if (currentVersion < 1) {
-        await db.execAsync(`
-            CREATE TABLE IF NOT EXISTS messages (
-                id TEXT PRIMARY KEY NOT NULL,
-                content TEXT,
-                sender_id TEXT NOT NULL,
-                created_at INTEGER NOT NULL,
-                status TEXT DEFAULT 'sent'
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
-        `);
-    }
-
-    if (currentVersion < 2) {
-        await db.execAsync(`
-            CREATE TABLE IF NOT EXISTS sessions (
-                key TEXT PRIMARY KEY NOT NULL,
-                value TEXT NOT NULL,
-                updated_at INTEGER NOT NULL
-            );
-        `);
-    }
-
-    await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
+        CREATE TABLE IF NOT EXISTS sessions (
+            key TEXT PRIMARY KEY NOT NULL,
+            value TEXT NOT NULL,
+            updated_at INTEGER NOT NULL
+        );
+    `);
+    await db.execAsync('PRAGMA user_version = 1;');
 }
 
 /**
  * Schema migration for the primary database.
  */
 async function migratePrimaryDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
-    const DATABASE_VERSION = 4;
-    const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-    const currentVersion = result?.user_version ?? 0;
+    await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS chats (
+            user_id       TEXT PRIMARY KEY NOT NULL,
+            phone         TEXT,
+            name          TEXT,
+            last_message  TEXT,
+            last_message_at INTEGER NOT NULL,
+            unread_count  INTEGER DEFAULT 0,
+            updated_at    INTEGER NOT NULL
+        );
 
-    if (currentVersion >= DATABASE_VERSION) {
-        return;
+        CREATE INDEX IF NOT EXISTS idx_chats_updated ON chats(updated_at DESC);
+
+        CREATE TABLE IF NOT EXISTS inbox (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            topic       TEXT NOT NULL,
+            payload     TEXT NOT NULL,
+            received_at INTEGER NOT NULL,
+            status      TEXT NOT NULL DEFAULT 'pending',
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            processed_at INTEGER
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_inbox_status ON inbox(status);
+
+        CREATE TABLE IF NOT EXISTS outbox (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id      TEXT NOT NULL,
+            message_id   TEXT NOT NULL,
+            payload      TEXT NOT NULL,
+            topic        TEXT NOT NULL,
+            created_at   INTEGER NOT NULL,
+            status       TEXT NOT NULL DEFAULT 'pending',
+            retry_count  INTEGER NOT NULL DEFAULT 0,
+            sent_at      INTEGER
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_outbox_status ON outbox(status);
+
+        CREATE TABLE IF NOT EXISTS contacts (
+            phone      TEXT PRIMARY KEY NOT NULL,
+            user_id    TEXT NOT NULL UNIQUE,
+            created_at INTEGER NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_contacts_user_id ON contacts(user_id);
+    `);
+
+    // Self-healing: add phone column to chats table if it doesn't exist
+    try {
+        await db.execAsync('ALTER TABLE chats ADD COLUMN phone TEXT;');
+    } catch {
+        // Column already exists or table doesn't support alter in this state, ignore
     }
 
-    if (currentVersion < 1) {
-        await db.execAsync(`
-            CREATE TABLE IF NOT EXISTS chats (
-                user_id       TEXT PRIMARY KEY NOT NULL,
-                name          TEXT,
-                last_message  TEXT,
-                last_message_at INTEGER NOT NULL,
-                unread_count  INTEGER DEFAULT 0,
-                updated_at    INTEGER NOT NULL
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_chats_updated ON chats(updated_at DESC);
-        `);
-    }
-
-    if (currentVersion < 2) {
-        await db.execAsync(`
-            CREATE TABLE IF NOT EXISTS inbox (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                topic       TEXT NOT NULL,
-                payload     TEXT NOT NULL,
-                received_at INTEGER NOT NULL,
-                status      TEXT NOT NULL DEFAULT 'pending',
-                retry_count INTEGER NOT NULL DEFAULT 0,
-                processed_at INTEGER
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_inbox_status ON inbox(status);
-        `);
-    }
-
-    if (currentVersion < 3) {
-        await db.execAsync(`
-            CREATE TABLE IF NOT EXISTS outbox (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                chat_id      TEXT NOT NULL,
-                message_id   TEXT NOT NULL,
-                payload      TEXT NOT NULL,
-                topic        TEXT NOT NULL,
-                created_at   INTEGER NOT NULL,
-                status       TEXT NOT NULL DEFAULT 'pending',
-                retry_count  INTEGER NOT NULL DEFAULT 0,
-                sent_at      INTEGER
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_outbox_status ON outbox(status);
-        `);
-    }
-
-    await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
+    await db.execAsync('PRAGMA user_version = 1;');
 }

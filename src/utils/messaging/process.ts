@@ -4,8 +4,10 @@
  */
 
 import { Session } from '@/src/store/useSession';
-import { X3DHBundle, initReceiver, decryptMessage, getIdentityKey } from '@/src/utils/crypto';
+import { X3DHBundle, initReceiver, decryptMessage, getIdentityKey, PreKeyBundle } from '@/src/utils/crypto';
 import { receiveInitialMessage, receiveMessage } from './receive';
+import { apiRequest } from '../transport/api';
+import { saveContact, upsertChatThread } from '../storage';
 
 /**
  * Processes a raw MQTT message (already parsed from JSON).
@@ -50,6 +52,21 @@ export async function processIncomingMessage(
         if (!result) {
             throw new Error(`Failed to decrypt initial message from ${senderUserId}`);
         }
+
+        // Fetch their bundle to resolve their phone number and save contact mapping!
+        try {
+            const bundle = await apiRequest<PreKeyBundle>(
+                `/bundle/${encodeURIComponent(senderUserId)}`,
+                { method: 'POST', authenticated: true }
+            );
+            if (bundle && bundle.phone) {
+                await saveContact(bundle.phone, senderUserId);
+                await upsertChatThread(senderUserId, result.plaintext, bundle.phone);
+            }
+        } catch (err) {
+            console.error('Failed to resolve phone number for incoming initial message:', err);
+        }
+
         return result.plaintext;
     } else if (payload.ciphertext && payload.header) {
         // Subsequent message — ratchet already initialized

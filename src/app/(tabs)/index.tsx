@@ -24,6 +24,7 @@ export default function Index() {
     return threads.filter(
       (t) =>
         (t.name && t.name.toLowerCase().includes(query)) ||
+        (t.phone && t.phone.toLowerCase().includes(query)) ||
         t.user_id.toLowerCase().includes(query) ||
         (t.last_message && t.last_message.toLowerCase().includes(query))
     );
@@ -160,7 +161,7 @@ export default function Index() {
   const renderThread = useCallback(({ item }: { item: ChatThread }) => (
     <Pressable
       style={themedStyles.threadItem}
-      onPress={() => router.push({ pathname: "/chat/[userId]", params: { userId: item.user_id } })}
+      onPress={() => router.push({ pathname: "/chat/[userId]", params: { userId: item.phone || item.user_id } })}
     >
       <View style={themedStyles.avatar}>
         <StyledText>
@@ -170,7 +171,7 @@ export default function Index() {
       <View style={styles.threadContent}>
         <View style={styles.threadHeader}>
           <StyledText style={styles.threadName} numberOfLines={1}>
-            {item.name || item.user_id}
+            {item.name || item.phone || item.user_id}
           </StyledText>
           <StyledText style={[styles.threadTime, { color: colors.outline }]}>
             {formatTime(item.last_message_at)}

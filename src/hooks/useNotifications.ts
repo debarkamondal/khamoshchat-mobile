@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import useSession from '@/src/store/useSession';
+import { getContactByUserId } from '@/src/utils/storage';
 import {
   requestNotificationPermission,
   fetchDeviceToken,
@@ -32,8 +32,6 @@ export default function useNotifications(isAuthenticated: boolean) {
     setupNotificationChannel();
     if (!isAuthenticated) return;
 
-    let isMounted = true;
-
     async function setupCore() {
       const status = await requestNotificationPermission();
       if (status !== 'granted') return;
@@ -54,12 +52,17 @@ export default function useNotifications(isAuthenticated: boolean) {
       const data = response.notification.request.content.data;
       const senderId = data?.sender_id || data?.sender;
       if (senderId) {
-        router.push(`/chat/${senderId}`);
+        getContactByUserId(senderId)
+          .then(phone => {
+            router.push(`/chat/${phone || senderId}`);
+          })
+          .catch(() => {
+            router.push(`/chat/${senderId}`);
+          });
       }
     });
 
     return () => {
-      isMounted = false;
       if (notificationListener.current) notificationListener.current.remove();
       if (responseListener.current) responseListener.current.remove();
     };

@@ -7,7 +7,7 @@ import { Session } from '@/src/store/useSession';
 import LibsignalDezireModule from '@/modules/libsignal-dezire/src/LibsignalDezireModule';
 
 import { fromBase64, toString } from '../helpers/encoding';
-import { saveMessage } from '../storage/messages';
+import { saveMessageWithAutoOpen } from '../storage/messages';
 import { X3DHBundle, x3dhResponder } from '../crypto/x3dh';
 import { loadOpk } from '../crypto/oneTimePreKeys';
 import { constructReceiverAD } from '../crypto/associatedData';
@@ -95,7 +95,7 @@ export async function receiveInitialMessage({
 
         // 6. Save message
         const plaintextStr = toString(plaintext);
-        await saveMessage(senderUserId, {
+        await saveMessageWithAutoOpen(senderUserId, {
             content: plaintextStr,
             sender_id: senderUserId,
         });
@@ -135,7 +135,7 @@ export async function receiveMessage({
 
         // 2. Save message
         const plaintextStr = toString(plaintext);
-        await saveMessage(senderUserId, {
+        await saveMessageWithAutoOpen(senderUserId, {
             content: plaintextStr,
             sender_id: senderUserId,
         });

@@ -14,6 +14,7 @@ import { getPrimaryDatabase } from './database';
  */
 export interface ChatThread {
     user_id: string;
+    phone: string | null;
     name: string | null;
     last_message: string | null;
     last_message_at: number;
@@ -48,18 +49,29 @@ function notifyChatListListeners(): void {
  *
  * @throws StorageError on write failure
  */
-export async function upsertChatThread(userId: string, lastMessage: string): Promise<void> {
+export async function upsertChatThread(userId: string, lastMessage: string, phone?: string | null): Promise<void> {
     const db = await getPrimaryDatabase();
     const now = Date.now();
 
+    let resolvedPhone = phone || null;
+    if (!resolvedPhone) {
+        const contactRow = await db.getFirstAsync<{ phone: string }>(
+            'SELECT phone FROM contacts WHERE user_id = ?',
+            userId
+        );
+        resolvedPhone = contactRow?.phone || null;
+    }
+
     await db.runAsync(
-        `INSERT INTO chats (user_id, last_message, last_message_at, unread_count, updated_at)
-         VALUES (?, ?, ?, 0, ?)
+        `INSERT INTO chats (user_id, phone, last_message, last_message_at, unread_count, updated_at)
+         VALUES (?, ?, ?, ?, 0, ?)
          ON CONFLICT(user_id) DO UPDATE SET
+             phone = COALESCE(excluded.phone, chats.phone),
              last_message = excluded.last_message,
              last_message_at = excluded.last_message_at,
              updated_at = excluded.updated_at`,
         userId,
+        resolvedPhone,
         lastMessage,
         now,
         now
