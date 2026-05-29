@@ -6,16 +6,18 @@ import StyledTextInput from "@/src/components/StyledTextInput";
 import Card from "@/src/components/Card";
 import StyledText from "@/src/components/StyledText";
 import { getContacts, SplitContact } from "@/src/utils/helpers/contacts";
-import { useThemedStyles } from "@/src/hooks/useTheme";
+import { useTheme, useThemedStyles } from "@/src/hooks/useTheme";
 import { router } from "expo-router";
 
 export default function Contacts() {
+  const { colors } = useTheme();
   const [contacts, setContacts] = useState<SplitContact[] | null>();
   const [searchTerm, setSearchTerm] = useState<string>();
+
   useEffect(() => {
     (async () => {
       const contacts = await getContacts();
-      setContacts(contacts)
+      setContacts(contacts);
     })();
   }, []);
 
@@ -24,33 +26,106 @@ export default function Contacts() {
   const themedStyles = useThemedStyles((colors) => ({
     contactList: {
       paddingBottom: Platform.OS === "ios" ? insets.bottom + 20 : 12,
+      paddingHorizontal: 4,
     },
     blurView: {
       flex: 1,
       marginTop: Platform.OS === "ios" ? 42 : insets.top || 24,
       marginHorizontal: Platform.OS === "ios" ? 16 : 12,
     },
+    pressableCard: {
+      marginVertical: 4,
+      borderRadius: 12,
+      overflow: "hidden" as const,
+    },
+    cardPressed: {
+      opacity: 0.8,
+      transform: [{ scale: 0.98 }],
+    },
+    cards: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      padding: 12,
+      marginVertical: 0,
+      borderRadius: 12,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.outlineVariant,
+      backgroundColor: colors.surface,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    avatar: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.primaryContainer,
+      justifyContent: "center" as const,
+      alignItems: "center" as const,
+      marginRight: 14,
+    },
+    avatarText: {
+      color: colors.onPrimaryContainer,
+      fontSize: 15,
+      fontWeight: "700" as const,
+    },
+    cardContent: {
+      flex: 1,
+      flexDirection: "column" as const,
+      justifyContent: "center" as const,
+    },
+    contactName: {
+      fontSize: 16,
+      fontWeight: "600" as const,
+      color: colors.onBackground,
+    },
     phoneNumber: {
-      fontSize: 14,
-      fontWeight: "300" as const,
-      marginVertical: 8,
+      fontSize: 13,
+      fontWeight: "400" as const,
       color: colors.onSurfaceVariant,
+      marginTop: 2,
+    },
+    chevronIcon: {
+      opacity: 0.6,
+      marginLeft: 8,
     },
     heading: {
-      fontSize: 36,
-      fontWeight: "600" as const,
+      fontSize: 32,
+      fontWeight: "700" as const,
       color: colors.onBackground,
       zIndex: 5,
     },
+    searchBar: {
+      flexGrow: 1,
+      borderRadius: 25,
+      marginVertical: 8,
+    },
+    headingView: {
+      flex: 0,
+      marginTop: 8,
+      marginBottom: 12,
+    },
   }));
+
+  const getInitials = (contact: SplitContact) => {
+    const first = contact.firstName?.[0] || "";
+    const last = contact.lastName?.[0] || "";
+    if (first && /[^a-zA-Z]/.test(first) && !contact.lastName) {
+      return "?";
+    }
+    const initials = (first + last).trim().toUpperCase();
+    return initials || "?";
+  };
 
   return (
     <SafeAreaView style={themedStyles.blurView}>
-      <View style={styles.headingView} collapsable={false}>
+      <View style={themedStyles.headingView} collapsable={false}>
         <StyledText style={themedStyles.heading}>Contacts</StyledText>
         <StyledTextInput
           onChangeText={(text) => setSearchTerm(text)}
-          style={styles.searchBar}
+          style={themedStyles.searchBar}
           placeholder="Search contacts"
         />
       </View>
@@ -69,55 +144,46 @@ export default function Contacts() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={themedStyles.contactList}
         scrollEnabled={true}
-        renderItem={({ item }) => (
-          <Card styles={styles.cards}>
-            <StyledText>
-              <Ionicons name={"search"} size={24} />
-            </StyledText>
+        renderItem={({ item }) => {
+          const initials = getInitials(item);
+          return (
             <Pressable
               onPress={() => {
                 const phone = item.number.replace(/[^0-9+]/g, "");
-                router.replace(`/chat/${phone}?id=${item.id}`);
+                router.replace({ pathname: "/chat/[userId]", params: { userId: phone, id: item.id } });
               }}
-              style={styles.cardContent}
+              style={({ pressed }) => [
+                themedStyles.pressableCard,
+                pressed && themedStyles.cardPressed
+              ]}
             >
-              {item && (
-                <StyledText>
-                  {item.firstName} {item.lastName}
-                </StyledText>
-              )}
-              <StyledText style={themedStyles.phoneNumber}>
-                {item.number} ({item.label})
-              </StyledText>
+              <Card styles={themedStyles.cards}>
+                <View style={themedStyles.avatar}>
+                  {initials === "?" ? (
+                    <Ionicons name="person" size={18} color={colors.onPrimaryContainer as string} />
+                  ) : (
+                    <StyledText style={themedStyles.avatarText}>{initials}</StyledText>
+                  )}
+                </View>
+                <View style={themedStyles.cardContent}>
+                  <StyledText style={themedStyles.contactName}>
+                    {item.firstName} {item.lastName || ""}
+                  </StyledText>
+                  <StyledText style={themedStyles.phoneNumber}>
+                    {item.number} {item.label ? `• ${item.label}` : ""}
+                  </StyledText>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={colors.onSurfaceVariant as string}
+                  style={themedStyles.chevronIcon}
+                />
+              </Card>
             </Pressable>
-          </Card>
-        )}
+          );
+        }}
       />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  cardContent: {
-    flex: 0,
-    flexDirection: "column",
-    marginVertical: 4,
-  },
-  cards: {
-    flex: 0,
-    marginVertical: 0,
-    flexDirection: "row",
-    padding: 4,
-    gap: 16,
-    alignItems: "center",
-  },
-  searchBar: {
-    flexGrow: 1,
-    borderRadius: 25,
-    marginVertical: 8,
-  },
-  headingView: {
-    flex: 0,
-    marginTop: 8,
-  },
-});

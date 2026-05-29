@@ -7,7 +7,7 @@ import StyledButton from "@/src/components/StyledButton";
 import StyledText from "@/src/components/StyledText";
 import { useTheme, useThemedStyles } from "@/src/hooks/useTheme";
 import useSession from "@/src/store/useSession";
-import { registerWithGoogleBackend } from "@/src/utils/auth/google";
+import { registerDevice } from "@/src/utils/auth/google";
 
 export default function Verify() {
   const params = useLocalSearchParams<{
@@ -20,7 +20,7 @@ export default function Verify() {
 
   const { token, userId, email, displayName, avatarUrl } = params;
 
-  const { setAuthenticatedUser } = useSession();
+
   const [isLoading, setIsLoading] = useState(false);
   const [countryCode, setCountryCode] = useState("+91");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -40,18 +40,9 @@ export default function Verify() {
     
     setIsLoading(true);
     try {
-      await registerWithGoogleBackend(token as string, {
-        countryCode: countryCode,
-        number: Number(phoneNumber),
-      });
-
-      setAuthenticatedUser({
-        token: token as string,
-        userId: userId as string,
-        email: email as string,
-        displayName: displayName as string,
-        avatarUrl: avatarUrl as string,
-      });
+      const session = useSession.getState();
+      const deviceId = await registerDevice(userId as string, { countryCode, number: Number(phoneNumber) });
+      session.markDeviceRegistered(deviceId);
 
       router.replace("/");
     } catch (error) {

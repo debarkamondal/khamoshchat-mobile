@@ -18,7 +18,7 @@ export default function OtpScreenDraft() {
     iKey,
     preKey,
     phone,
-    markSessionRegistered,
+    markDeviceRegistered,
   } = useSession();
 
   const submit = async (otp: number) => {
@@ -35,9 +35,10 @@ export default function OtpScreenDraft() {
     const res = await fetch("https://identity.dkmondal.in/test/register/otp", {
       method: "POST",
       body: JSON.stringify({
+        user_id: "mock-user-id",
         phone: phone.countryCode + phone.number,
-        sign: b64Sign,
         signedPreKey: b64PreKey,
+        sign: b64Sign,
         vrf: btoa(String.fromCharCode(...vrf)),
         opks: b64Opks,
         otp,
@@ -45,7 +46,7 @@ export default function OtpScreenDraft() {
     });
 
     if (res.status === 204) {
-      markSessionRegistered();
+      markDeviceRegistered("mock-device-id");
       router.replace("/");
     }
   };

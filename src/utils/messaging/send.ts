@@ -23,25 +23,40 @@ import { RatchetEncryptResult } from '@/modules/libsignal-dezire/src/LibsignalDe
 import LibsignalDezireModule from '@/modules/libsignal-dezire/src/LibsignalDezireModule';
 
 import { toBase64, fromBase64, toBytes } from '../helpers/encoding';
-import { saveMessage, updateMessageStatus } from '../storage/messages';
-import { saveToOutbox, markOutboxSent, incrementOutboxRetry } from '../storage/outbox';
-import { BundleFetchError, EncryptionError, OutboxPersistError, UserNotFoundError } from '../storage/errors';
+import {
+    saveMessage,
+    saveMessageWithAutoOpen,
+    updateMessageStatus,
+    saveToOutbox,
+    markOutboxSent,
+    incrementOutboxRetry,
+    saveContact,
+    upsertChatThread,
+    BundleFetchError,
+    EncryptionError,
+    OutboxPersistError,
+    UserNotFoundError,
+} from '../storage';
 import { buildTopic, publishMessage } from '../transport/mqtt';
-import { generateAuthParams, x3dhInitiator, PreKeyBundle } from '../crypto/x3dh';
+import { x3dhInitiator, PreKeyBundle, clearSession } from '../crypto';
 import { constructSenderAD } from '../crypto/associatedData';
+import { apiRequest } from '../transport/api';
 
 // ===== Type Definitions =====
 
 type SendInitialMessageParams = {
     session: Session;
-    number: string;
+    recipientIdentifier: string;
     message: string;
     initSender: (
+        userId: string,
         sharedSecret: Uint8Array,
         receiverPub: Uint8Array,
-        identityKey?: string
+        identityKey: string,
+        deviceId: string
     ) => Promise<string | undefined>;
     encrypt: (
+        userId: string,
         plaintext: Uint8Array,
         ad?: Uint8Array
     ) => Promise<RatchetEncryptResult | null>;
@@ -49,21 +64,19 @@ type SendInitialMessageParams = {
 
 type SendMessageParams = {
     session: Session;
-    number: string;
+    recipientUserId: string;
+    recipientDeviceId: string;
     message: string;
     encrypt: (
+        userId: string,
         plaintext: Uint8Array,
         ad?: Uint8Array
     ) => Promise<RatchetEncryptResult | null>;
     recipientIdentityKey: string;
 };
 
-// ===== Internal helpers =====
 
-/**
- * Attempts to publish an outbox entry and update statuses.
- * On failure, increments the retry counter (auto-fails after MAX_RETRIES).
- */
+// On failure, increments the retry counter (auto-fails after MAX_RETRIES).
 async function attemptPublish(
     outboxId: number,
     chatId: string,
@@ -101,57 +114,36 @@ async function attemptPublish(
  */
 export async function sendInitialMessage({
     session,
-    number,
+    recipientIdentifier,
     message,
     initSender,
     encrypt,
-}: SendInitialMessageParams): Promise<void> {
+}: SendInitialMessageParams): Promise<{ userId: string }> {
     // 1. Check connectivity — X3DH requires fetching the bundle
     const { isConnected } = useMqttStore.getState();
     if (!isConnected) {
-        throw new BundleFetchError(number);
+        throw new BundleFetchError(recipientIdentifier);
     }
 
-    // 2. Generate Auth Params
-    const { signature, vrf } = await generateAuthParams(session, number);
-    const body = {
-        phone: session.phone.countryCode + session.phone.number,
-        signature,
-        vrf,
-    };
-
-    // 3. Fetch Bundle
+    // 2. Fetch Bundle
     let preKeyBundle: PreKeyBundle | undefined;
     try {
-        const baseUrl = process.env.EXPO_PUBLIC_IDENTITY_URL ?? 'https://identity.dkmondal.in/test';
-        const res = await fetch(`${baseUrl.replace(/\/$/, '')}/bundle/${number}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-        });
+        preKeyBundle = await apiRequest<PreKeyBundle>(
+            `/bundle/${encodeURIComponent(recipientIdentifier)}`,
+            { method: 'POST', authenticated: true }
+        );
 
-        if (!res.ok) {
-            if (res.status === 404) {
-                throw new UserNotFoundError(number);
-            }
-            const text = await res.text();
-            console.error('Bundle fetch HTTP error:', res.status, text);
-            throw new BundleFetchError(number);
+        if (!preKeyBundle || !preKeyBundle.identityKey || !preKeyBundle.userId || !preKeyBundle.deviceId) {
+            throw new BundleFetchError(recipientIdentifier);
         }
-        const rawBundle = await res.json();
-        if (!rawBundle.identityKey) {
-            throw new BundleFetchError(number);
-        }
-        preKeyBundle = {
-            identityKey: rawBundle.identityKey,
-            signature: rawBundle.signature,
-            signedPreKey: rawBundle.signedPreKey,
-            opk: rawBundle.opk,
-        };
-    } catch (e) {
+    } catch (e: any) {
+        if (e.status === 404) throw new UserNotFoundError(recipientIdentifier);
         if (e instanceof UserNotFoundError || e instanceof BundleFetchError) throw e;
-        throw new BundleFetchError(number, e);
+        throw new BundleFetchError(recipientIdentifier, e);
     }
+
+    const resolvedUserId = preKeyBundle.userId;
+    const resolvedPhone = preKeyBundle.phone || recipientIdentifier;
 
     // 4. X3DH Key Exchange
     let sharedSecret: Uint8Array;
@@ -161,26 +153,29 @@ export async function sendInitialMessage({
         sharedSecret = x3dhResult.sharedSecret;
         ephemeralKey = x3dhResult.ephemeralKey;
         await initSender(
+            resolvedUserId,
             sharedSecret,
             fromBase64(preKeyBundle.signedPreKey),
-            preKeyBundle.identityKey
+            preKeyBundle.identityKey,
+            preKeyBundle.deviceId
         );
     } catch (e) {
-        throw new EncryptionError(number, e);
+        throw new EncryptionError(resolvedPhone, e as Error);
     }
 
     // 5. Construct AD and encrypt
     let ciphertext: RatchetEncryptResult;
     try {
         const ad = await constructSenderAD(session.iKey, preKeyBundle.identityKey);
-        const result = await encrypt(toBytes(message), ad);
+        const result = await encrypt(resolvedUserId, toBytes(message), ad);
         if (!result) {
-            throw new EncryptionError(number);
+            throw new EncryptionError(resolvedPhone);
         }
         ciphertext = result;
     } catch (e) {
+        await clearSession(resolvedUserId).catch(() => {});
         if (e instanceof EncryptionError) throw e;
-        throw new EncryptionError(number, e);
+        throw new EncryptionError(resolvedPhone, e as Error);
     }
 
     // 6. Build payload
@@ -195,29 +190,49 @@ export async function sendInitialMessage({
     };
     const payloadStr = JSON.stringify(payload);
 
-    // 7. Save message as 'pending' + queue to outbox
-    let messageId: string;
-    let outboxId: number;
-    const senderPhone = session.phone.countryCode + session.phone.number;
-    const topic = buildTopic(senderPhone, number);
+    const topic = buildTopic(
+        resolvedUserId, preKeyBundle.deviceId,
+        session.userId!, session.deviceId!
+    );
+
+    // 7. Publish to MQTT first! (Publish-first workflow)
+    let publishSuccess = false;
     try {
-        messageId = await saveMessage(number, {
-            content: message,
-            sender_id: 'me',
-            status: 'pending',
-        });
-        outboxId = await saveToOutbox(number, messageId, topic, payloadStr);
+        publishSuccess = await publishMessage(topic, payloadStr);
     } catch (e) {
-        throw new OutboxPersistError(number, e);
+        console.error('MQTT publish failed for initial message:', e);
     }
 
-    // 8. Attempt publish — failure is non-fatal, outbox retry will handle it
-    try {
-        await attemptPublish(outboxId, number, messageId, topic, payloadStr);
-    } catch (e) {
-        console.error('Publish attempt failed (will retry from outbox):', e);
-        // Non-fatal — message is safely persisted in outbox
+    if (!publishSuccess) {
+        // Cleanup session since publish failed
+        await clearSession(resolvedUserId).catch(() => {});
+        throw new Error("Message has not been sent. Please try again.");
     }
+
+    // 8. On successful publish, persist everything to DB!
+    try {
+        // Save phone <-> UUID mapping
+        await saveContact(resolvedPhone, resolvedUserId);
+
+        // Save plaintext message directly as 'sent'
+        const messageId = await saveMessageWithAutoOpen(resolvedUserId, {
+            content: message,
+            sender_id: 'me',
+            status: 'sent',
+        });
+
+        // Save to outbox directly as 'sent'
+        const outboxId = await saveToOutbox(resolvedUserId, messageId, topic, payloadStr);
+        await markOutboxSent(outboxId);
+
+        // Upsert chat thread using UUID and the recipient phone
+        await upsertChatThread(resolvedUserId, message, resolvedPhone);
+    } catch (e) {
+        console.error('Failed to persist sent message metadata:', e);
+        // Non-fatal since the message was already sent over the wire, but log it
+    }
+
+    return { userId: resolvedUserId };
 }
 
 /**
@@ -229,7 +244,8 @@ export async function sendInitialMessage({
  */
 export async function sendMessage({
     session,
-    number,
+    recipientUserId,
+    recipientDeviceId,
     message,
     encrypt,
     recipientIdentityKey,
@@ -238,14 +254,14 @@ export async function sendMessage({
     let ciphertext: RatchetEncryptResult;
     try {
         const ad = await constructSenderAD(session.iKey, recipientIdentityKey);
-        const result = await encrypt(toBytes(message), ad);
+        const result = await encrypt(recipientUserId, toBytes(message), ad);
         if (!result) {
-            throw new EncryptionError(number);
+            throw new EncryptionError(recipientUserId);
         }
         ciphertext = result;
     } catch (e) {
         if (e instanceof EncryptionError) throw e;
-        throw new EncryptionError(number, e);
+        throw new EncryptionError(recipientUserId, e as Error);
     }
 
     // 2. Build payload
@@ -258,24 +274,26 @@ export async function sendMessage({
     // 3. Save message as 'pending' + queue to outbox
     let messageId: string;
     let outboxId: number;
-    const senderPhone = session.phone.countryCode + session.phone.number;
-    const topic = buildTopic(senderPhone, number);
+    const topic = buildTopic(
+        recipientUserId, recipientDeviceId,
+        session.userId!, session.deviceId!
+    );
     try {
-        messageId = await saveMessage(number, {
+        messageId = await saveMessage(recipientUserId, {
             content: message,
             sender_id: 'me',
             status: 'pending',
         });
-        outboxId = await saveToOutbox(number, messageId, topic, payloadStr);
+        outboxId = await saveToOutbox(recipientUserId, messageId, topic, payloadStr);
     } catch (e) {
-        throw new OutboxPersistError(number, e);
+        throw new OutboxPersistError(recipientUserId, e as Error);
     }
 
     // 4. Attempt publish (if connected) — failure is non-fatal
     try {
         const { isConnected } = useMqttStore.getState();
         if (isConnected) {
-            await attemptPublish(outboxId, number, messageId, topic, payloadStr);
+            await attemptPublish(outboxId, recipientUserId, messageId, topic, payloadStr);
         }
         // If not connected, entries stay 'pending' — retried on reconnect
     } catch (e) {

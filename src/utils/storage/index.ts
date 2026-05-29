@@ -9,5 +9,6 @@ export * from './keys';
 export * from './chatList';
 export * from './inbox';
 export * from './outbox';
+export * from './contacts';
 export * from './errors';
 

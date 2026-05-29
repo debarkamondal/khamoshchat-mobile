@@ -10,7 +10,10 @@ const config: ExpoConfig = {
   userInterfaceStyle: "automatic",
   ios: {
     supportsTablet: true,
-    bundleIdentifier: "com.anonymous.khamoshchat",
+    bundleIdentifier: "in.dkmondal.kchat",
+    infoPlist: {
+      UIBackgroundModes: ["remote-notification"],
+    },
   },
   android: {
     adaptiveIcon: {
@@ -20,11 +23,12 @@ const config: ExpoConfig = {
       monochromeImage: "./src/assets/images/android-icon-monochrome.png",
     },
     predictiveBackGestureEnabled: true,
-    package: "com.anonymous.khamoshchat",
+    package: "in.dkmondal.kchat",
     permissions: [
       "android.permission.READ_CONTACTS",
       "android.permission.WRITE_CONTACTS",
     ],
+    googleServicesFile: "./google-services.json", // TODO: SETUP REQUIRED - Place google-services.json in root directory
   },
   web: {
     output: "static",
@@ -32,6 +36,14 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    [
+      "expo-notifications",
+      {
+        icon: "./src/assets/images/icon.png",
+        color: "#FFCC00", 
+        androidMode: "default",
+      },
+    ],
     [
       "expo-contacts",
       {

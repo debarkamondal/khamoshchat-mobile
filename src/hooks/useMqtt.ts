@@ -160,7 +160,7 @@ const useMqtt = (topic: string) => {
                     console.log(`Connected to MQTT broker for topic: ${topic}`);
                     setConnected(true);
 
-                    const topicPath = `/khamoshchat/${encodeURIComponent(topic)}/#`;
+                    const topicPath = `/khamoshchat/${session.userId}/${session.deviceId}/#`;
                     try {
                         await MqttClient.subscribe(topicPath, 1);
                         console.log(`Subscribed to ${topicPath}`);
@@ -185,7 +185,7 @@ const useMqtt = (topic: string) => {
                 subscriptions.push(errorSub);
 
                 // 3. Connect
-                const clientId = `khamoshchat-${session.phone.countryCode.replace('+', '')}-${session.phone.number}`;
+                const clientId = `khamoshchat-${session.userId}-${session.deviceId}`;
                 await MqttClient.connect(
                     `${process.env.EXPO_PUBLIC_MQTT_URL}`,
                     "dezire",

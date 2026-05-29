@@ -24,28 +24,38 @@ export async function getContacts(): Promise<SplitContact[] | null> {
             fields: ["firstName", "lastName", "phoneNumbers"],
             sort: "firstName",
         });
+        
+        const seenNumbers = new Set<string>();
+
         for (let i = 0; i < data.length; i++) {
-            // Check for both undefined and null, and ensure it's an array
             const contact = data[i];
 
             if (
                 contact.phoneNumbers &&
-                contact.phoneNumbers.length !== undefined &&
+                Array.isArray(contact.phoneNumbers) &&
                 contact.phoneNumbers.length > 0
             ) {
                 for (
                     let j = 0;
-                    data[i].phoneNumbers && j < contact.phoneNumbers.length;
+                    j < contact.phoneNumbers.length;
                     j++
                 ) {
                     const numbers = contact.phoneNumbers[j];
-                    if (!numbers.number) continue;
+                    if (!numbers || !numbers.number) continue;
+
+                    // Normalize phone number to eliminate duplicates
+                    const normalized = numbers.number.replace(/[^0-9+]/g, "");
+                    if (!normalized) continue;
+
+                    if (seenNumbers.has(normalized)) continue;
+                    seenNumbers.add(normalized);
+
                     splitContacts.push({
                         firstName: contact.firstName ?? (numbers.number as string),
                         lastName: contact.lastName,
                         id: contact.id + "/" + j,
                         number: numbers.number,
-                        label: numbers.label,
+                        label: numbers.label ?? "mobile",
                     });
                 }
             }

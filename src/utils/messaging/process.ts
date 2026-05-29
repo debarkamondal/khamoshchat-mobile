@@ -4,8 +4,10 @@
  */
 
 import { Session } from '@/src/store/useSession';
-import { X3DHBundle, initReceiver, decryptMessage, getIdentityKey } from '@/src/utils/crypto';
+import { X3DHBundle, initReceiver, decryptMessage, getIdentityKey, PreKeyBundle } from '@/src/utils/crypto';
 import { receiveInitialMessage, receiveMessage } from './receive';
+import { apiRequest } from '../transport/api';
+import { saveContact, upsertChatThread } from '../storage';
 
 /**
  * Processes a raw MQTT message (already parsed from JSON).
@@ -17,49 +19,76 @@ export async function processIncomingMessage(
     session: Session,
     topic: string,
     rawPayload: string
-): Promise<void> {
+): Promise<string> {
     const parsed = JSON.parse(rawPayload);
     const payload = parsed as X3DHBundle & { ciphertext: string; header: string };
 
-    // Extract sender from topic: /khamoshchat/<recipient>/<sender>
+    // Extract sender from topic: /khamoshchat/{recipientId}/{recipientDeviceId}/{senderId}/{senderDeviceId}
     const topicParts = topic.split('/');
-    const senderPhone = topicParts.length >= 4 ? decodeURIComponent(topicParts[3]) : null;
+    // topicParts: ['', 'khamoshchat', recipientId, recipientDeviceId, senderId, senderDeviceId]
+    const senderUserId = topicParts.length >= 6 ? decodeURIComponent(topicParts[4]) : null;
+    const senderDeviceId = topicParts.length >= 6 ? decodeURIComponent(topicParts[5]) : null;
 
-    if (!senderPhone) {
-        throw new Error(`Could not extract sender phone from topic: ${topic}`);
+    if (!senderUserId || !senderDeviceId) {
+        throw new Error(`Could not extract sender info from topic: ${topic}`);
     }
 
     if (payload.identityKey && payload.ephemeralKey && payload.opkId !== undefined) {
         // Initial message — full X3DH handshake
-        if (!session.isRegistered) {
+        if (!session.isAuthenticated) {
             throw new Error('Session not registered, cannot process initial message');
         }
 
-        await receiveInitialMessage({
+        const result = await receiveInitialMessage({
             session,
             payload,
-            senderPhone,
+            senderUserId: senderUserId, // TODO rename prop in receiveInitialMessage
             initReceiver: (sharedSecret, receiverPriv, receiverPub, identityKey) =>
-                initReceiver(senderPhone, sharedSecret, receiverPriv, receiverPub, identityKey),
+                initReceiver(senderUserId, sharedSecret, receiverPriv, receiverPub, identityKey!, senderDeviceId),
             decrypt: (header, ciphertext, ad) =>
-                decryptMessage(senderPhone, header, ciphertext, ad),
+                decryptMessage(senderUserId, header, ciphertext, ad),
         });
-    } else if (payload.ciphertext && payload.header) {
-        // Subsequent message — ratchet already initialized
-        const identityKey = await getIdentityKey(senderPhone);
-        if (!identityKey) {
-            throw new Error(`No identity key found for sender: ${senderPhone}`);
+
+        if (!result) {
+            throw new Error(`Failed to decrypt initial message from ${senderUserId}`);
         }
 
-        await receiveMessage({
+        // Fetch their bundle to resolve their phone number and save contact mapping!
+        try {
+            const bundle = await apiRequest<PreKeyBundle>(
+                `/bundle/${encodeURIComponent(senderUserId)}`,
+                { method: 'POST', authenticated: true }
+            );
+            if (bundle && bundle.phone) {
+                await saveContact(bundle.phone, senderUserId);
+                await upsertChatThread(senderUserId, result.plaintext, bundle.phone);
+            }
+        } catch (err) {
+            console.error('Failed to resolve phone number for incoming initial message:', err);
+        }
+
+        return result.plaintext;
+    } else if (payload.ciphertext && payload.header) {
+        // Subsequent message — ratchet already initialized
+        const identityKey = await getIdentityKey(senderUserId);
+        if (!identityKey) {
+            throw new Error(`No identity key found for sender: ${senderUserId}`);
+        }
+
+        const result = await receiveMessage({
             session,
             payload,
-            senderPhone,
+            senderUserId: senderUserId, // TODO rename prop in receiveMessage
             senderIdentityKey: identityKey,
             decrypt: (header, ciphertext, ad) =>
-                decryptMessage(senderPhone, header, ciphertext, ad),
+                decryptMessage(senderUserId, header, ciphertext, ad),
         });
+
+        if (!result) {
+            throw new Error(`Failed to decrypt subsequent message from ${senderUserId}`);
+        }
+        return result.plaintext;
     } else {
-        throw new Error(`Unrecognized message payload shape from ${senderPhone}`);
+        throw new Error(`Unrecognized message payload shape from ${senderUserId}`);
     }
 }

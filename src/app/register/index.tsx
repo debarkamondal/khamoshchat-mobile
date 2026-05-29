@@ -5,7 +5,8 @@ import { Link, router } from "expo-router";
 import { useThemedStyles } from "@/src/hooks/useTheme";
 import StyledText from "@/src/components/StyledText";
 import { useEffect, useState } from "react";
-import { isGoogleSignInAvailable, GoogleAuthFlowError, startGoogleSignIn } from "@/src/utils/auth/google";
+import { isGoogleSignInAvailable, GoogleAuthFlowError, startGoogleSignIn, verifyGoogleIdToken } from "@/src/utils/auth/google";
+import useSession from "@/src/store/useSession";
 
 export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
@@ -39,11 +40,22 @@ export default function Register() {
     setIsLoading(true);
     try {
       const user = await startGoogleSignIn();
+      const phase1 = await verifyGoogleIdToken(user.token);
+
+      const { setAuthenticatedUser } = useSession.getState();
+      setAuthenticatedUser({
+        token: user.token,
+        userId: phase1.userId,
+        email: user.email || "",
+        displayName: user.displayName || "",
+        avatarUrl: user.avatarUrl || "",
+      });
+
       router.push({
         pathname: "/register/verify",
         params: {
           token: user.token,
-          userId: user.userId,
+          userId: phase1.userId,
           email: user.email || "",
           displayName: user.displayName || "",
           avatarUrl: user.avatarUrl || "",

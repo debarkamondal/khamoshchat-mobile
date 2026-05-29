@@ -13,6 +13,10 @@ import {
     pruneInbox,
     pruneOutbox,
 } from "@/src/utils/storage";
+import useNotifications from "@/src/hooks/useNotifications";
+
+// Ensures background task is registered before React mounts
+import "@/src/utils/notifications/background";
 
 // Set the animation options. This is optional.
 SplashScreen.setOptions({
@@ -39,15 +43,14 @@ export default function RootLayout() {
 function InnerLayout({ isAuthenticated }: { isAuthenticated: boolean }) {
   const { colors } = useTheme();
   const session = useSession();
-  const hasMessagingIdentity = Boolean(
-    session.phone.countryCode && session.phone.number,
-  );
-  const topic = hasMessagingIdentity
-    ? session.phone.countryCode + session.phone.number
-    : "";
+  const hasMessagingIdentity = Boolean(session.userId);
+  const topic = hasMessagingIdentity ? session.userId : "";
 
   // Consolidated hook handles connection + store sync + message listening
-  useMqtt(isAuthenticated && hasMessagingIdentity ? topic : "");
+  useMqtt(isAuthenticated && hasMessagingIdentity ? topic! : "");
+
+  // Handles push notification permissions, tokens, and local scheduling
+  useNotifications(isAuthenticated);
 
   // Open primary database on auth, with proper error handling
   useEffect(() => {
@@ -110,7 +113,7 @@ function InnerLayout({ isAuthenticated }: { isAuthenticated: boolean }) {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={isAuthenticated}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="chat/[number]" />
+        <Stack.Screen name="chat/[userId]" />
         <Stack.Screen
           name="contacts"
           options={{
