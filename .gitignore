@@ -11,8 +11,6 @@ modules/expo-native-mqtt/android/build
 # Temp files
 scripts/send-test-push.js
 
-# FCM files
-scripts/service-account.json
 
 #build files
 build-*
