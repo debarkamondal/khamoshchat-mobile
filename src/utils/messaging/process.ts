@@ -60,7 +60,7 @@ export async function processIncomingMessage(
                 { method: 'POST', authenticated: true }
             );
             if (bundle && bundle.phone) {
-                await saveContact(bundle.phone, senderUserId);
+                await saveContact(bundle.phone, senderUserId, bundle.picture);
                 await upsertChatThread(senderUserId, result.plaintext, bundle.phone);
             }
         } catch (err) {

@@ -24,6 +24,8 @@ import {
   getContactByUserId,
 } from '@/src/utils/storage';
 import ChatBubble from "@/src/components/ChatBubble";
+import { ContactAvatar } from "@/src/components/ContactAvatar";
+import { getContactInfo } from "@/src/utils/storage/contacts";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -43,6 +45,7 @@ import { withRetry, BailoutError } from "@/src/utils/helpers/retry";
 
 export default function Chat() {
   const [name, setName] = useState<string>();
+  const [picture, setPicture] = useState<string | null>(null);
   const [message, setMessage] = useState<string>("");
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -300,26 +303,41 @@ export default function Chat() {
 
   useEffect(() => {
     let isMounted = true;
-    (async () => {
+    const resolveIdentity = async () => {
+      if (resolvedUUID) {
+        const info = await getContactInfo(resolvedUUID);
+        if (info && isMounted) {
+          if (info.name) setName(info.name);
+          if (info.picture) setPicture(info.picture);
+          return;
+        }
+      }
+
       if (id) {
-        const data = await Contacts.getContactByIdAsync(id.split("/")[0]);
-        if (isMounted) {
-          setName(data?.firstName + " " + (data?.lastName || ""));
+        try {
+          const data = await Contacts.getContactByIdAsync(id.split("/")[0]);
+          if (isMounted && data) {
+            setName(data.firstName + " " + (data.lastName || ""));
+          }
+        } catch (e) {
+          console.warn("Failed to fetch contact by device ID:", e);
         }
       } else {
         const isPhone = userId.startsWith("+") || /^\d+$/.test(userId);
         if (isPhone) {
           if (isMounted) setName(userId);
-        } else {
-          const phone = await getContactByUserId(userId);
+        } else if (resolvedUUID) {
+          const phone = await getContactByUserId(resolvedUUID);
           if (isMounted) setName(phone || userId);
         }
       }
-    })();
+    };
+
+    resolveIdentity();
     return () => {
       isMounted = false;
     };
-  }, [id, userId]);
+  }, [id, userId, resolvedUUID]);
 
   // Theme-dependent styles (memoized by theme)
   const themedStyles = useThemedStyles((colors) => ({
@@ -386,9 +404,14 @@ export default function Chat() {
             size={24}
           />
         </StyledButton>
-        <StyledText style={styles.image}>
-          <Ionicons name="person-circle-outline" size={32} />
-        </StyledText>
+        <View style={styles.avatarWrapper}>
+          <ContactAvatar
+            name={name || userId}
+            picture={picture}
+            userId={resolvedUUID || userId}
+            size={36}
+          />
+        </View>
         <StyledText style={styles.headerTitle}>{name || userId}</StyledText>
       </View>
 
@@ -474,6 +497,9 @@ export default function Chat() {
 }
 
 const styles = StyleSheet.create({
+  avatarWrapper: {
+    margin: 4,
+  },
   image: {
     margin: 8,
   },

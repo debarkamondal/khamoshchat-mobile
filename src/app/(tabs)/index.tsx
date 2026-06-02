@@ -9,6 +9,9 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { getChatThreads, subscribeToChatList, ChatThread, DatabaseKeyMismatchError, StorageError } from "@/src/utils/storage";
 import StyledTextInput from "@/src/components/StyledTextInput";
 
+import { ContactAvatar } from "@/src/components/ContactAvatar";
+import { syncDeviceContacts } from "@/src/utils/helpers/contacts";
+
 export default function Index() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -36,6 +39,7 @@ export default function Index() {
 
     const loadThreads = async () => {
       try {
+        await syncDeviceContacts();
         const t = await getChatThreads();
         if (isMounted) {
           setThreads(t);
@@ -171,10 +175,13 @@ export default function Index() {
       style={themedStyles.threadItem}
       onPress={() => router.push({ pathname: "/chat/[userId]", params: { userId: item.phone || item.user_id } })}
     >
-      <View style={themedStyles.avatar}>
-        <StyledText>
-          <MaterialCommunityIcons name="account" size={28} />
-        </StyledText>
+      <View style={styles.avatarWrapper}>
+        <ContactAvatar
+          name={item.name}
+          picture={item.picture}
+          userId={item.user_id}
+          size={48}
+        />
       </View>
       <View style={styles.threadContent}>
         <View style={styles.threadHeader}>
@@ -261,6 +268,9 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
+  avatarWrapper: {
+    marginRight: 12,
+  },
   threadContent: {
     flex: 1,
   },

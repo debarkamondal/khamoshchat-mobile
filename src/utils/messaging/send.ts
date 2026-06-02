@@ -213,7 +213,7 @@ export async function sendInitialMessage({
     // 8. On successful publish, persist everything to DB!
     try {
         // Save phone <-> UUID mapping
-        await saveContact(resolvedPhone, resolvedUserId);
+        await saveContact(resolvedPhone, resolvedUserId, preKeyBundle.picture);
 
         // Save plaintext message directly as 'sent'
         const messageId = await saveMessageWithAutoOpen(resolvedUserId, {

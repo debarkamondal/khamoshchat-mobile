@@ -270,7 +270,6 @@ async function migratePrimaryDatabase(db: SQLite.SQLiteDatabase): Promise<void> 
         CREATE TABLE IF NOT EXISTS chats (
             user_id       TEXT PRIMARY KEY NOT NULL,
             phone         TEXT,
-            name          TEXT,
             last_message  TEXT,
             last_message_at INTEGER NOT NULL,
             unread_count  INTEGER DEFAULT 0,
@@ -308,6 +307,9 @@ async function migratePrimaryDatabase(db: SQLite.SQLiteDatabase): Promise<void> 
         CREATE TABLE IF NOT EXISTS contacts (
             phone      TEXT PRIMARY KEY NOT NULL,
             user_id    TEXT NOT NULL UNIQUE,
+            contact_id TEXT,
+            name       TEXT,
+            picture    TEXT,
             created_at INTEGER NOT NULL
         );
 
@@ -320,6 +322,17 @@ async function migratePrimaryDatabase(db: SQLite.SQLiteDatabase): Promise<void> 
     } catch {
         // Column already exists or table doesn't support alter in this state, ignore
     }
+
+    // Self-healing: add contact_id, name, and picture columns to contacts table if they don't exist
+    try {
+        await db.execAsync('ALTER TABLE contacts ADD COLUMN contact_id TEXT;');
+    } catch {}
+    try {
+        await db.execAsync('ALTER TABLE contacts ADD COLUMN name TEXT;');
+    } catch {}
+    try {
+        await db.execAsync('ALTER TABLE contacts ADD COLUMN picture TEXT;');
+    } catch {}
 
     await db.execAsync('PRAGMA user_version = 1;');
 }

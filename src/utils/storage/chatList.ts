@@ -16,6 +16,7 @@ export interface ChatThread {
     user_id: string;
     phone: string | null;
     name: string | null;
+    picture: string | null;
     last_message: string | null;
     last_message_at: number;
     unread_count: number;
@@ -88,7 +89,11 @@ export async function upsertChatThread(userId: string, lastMessage: string, phon
 export async function getChatThreads(): Promise<ChatThread[]> {
     const db = await openPrimaryDatabase();
     return db.getAllAsync<ChatThread>(
-        'SELECT * FROM chats ORDER BY updated_at DESC'
+        `SELECT c.user_id, c.phone, c.last_message, c.last_message_at, 
+                c.unread_count, c.updated_at,
+                ct.name, ct.picture
+         FROM chats c
+         LEFT JOIN contacts ct ON c.user_id = ct.user_id
+         ORDER BY c.updated_at DESC`
     );
 }
-

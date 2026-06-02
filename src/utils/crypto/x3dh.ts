@@ -18,6 +18,7 @@ export type PreKeyBundle = {
         id: number;
         key: string;
     };
+    picture?: string;
 };
 
 export type X3DHBundle = {
