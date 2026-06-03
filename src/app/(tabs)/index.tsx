@@ -10,7 +10,7 @@ import { getChatThreads, subscribeToChatList, ChatThread, DatabaseKeyMismatchErr
 import StyledTextInput from "@/src/components/StyledTextInput";
 
 import { ContactAvatar } from "@/src/components/ContactAvatar";
-import { syncDeviceContacts } from "@/src/utils/helpers/contacts";
+import { syncDeviceContacts } from "@/src/utils/sync/contactSync";
 
 export default function Index() {
   const insets = useSafeAreaInsets();

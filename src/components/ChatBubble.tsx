@@ -77,9 +77,45 @@ export default function ChatBubble({ message }: ChatBubbleProps) {
         },
         failedIndicator: {
         },
+        systemContainer: {
+            alignSelf: 'center',
+            alignItems: 'center',
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            marginVertical: 8,
+            maxWidth: '85%',
+        },
+        systemText: {
+            color: colors.onSurfaceVariant,
+            fontSize: 13,
+            lineHeight: 18,
+            textAlign: 'center',
+        },
+        systemTimestamp: {
+            color: colors.onSurfaceVariant,
+            fontSize: 10,
+            marginTop: 4,
+            textAlign: 'center',
+            opacity: 0.7,
+        },
     }));
 
     const isMe = message.sender_id === 'me' || message.sender_id === 'self';
+    const isSystem = message.type === 'system' || message.sender_id === 'system';
+
+    // System messages render as centered, muted info text (not a chat bubble)
+    if (isSystem) {
+        return (
+            <View style={themedStyles.systemContainer}>
+                <StyledText style={themedStyles.systemText}>
+                    {message.content}
+                </StyledText>
+                <StyledText style={themedStyles.systemTimestamp}>
+                    {formatMessageTime(message.created_at)}
+                </StyledText>
+            </View>
+        );
+    }
 
     const statusIcon = isMe ? getStatusIcon(message.status, themedStyles) : null;
 

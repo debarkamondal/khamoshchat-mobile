@@ -1,0 +1,100 @@
+/**
+ * Device contacts synchronization engine.
+ * Syncs device contact names and IDs with registered contacts in our database.
+ */
+
+import * as Contacts from "expo-contacts";
+
+import { getAllContacts, batchSyncDeviceContacts } from "../storage/contacts";
+
+// Store last sync time in memory to debounce sync queries
+let lastSyncTime = 0;
+const SYNC_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Syncs device contact names and IDs with registered contacts in our database.
+ * Does not request permissions, only performs sync if permission has already been granted.
+ */
+export async function syncDeviceContacts(force = false): Promise<void> {
+    const now = Date.now();
+    if (!force && now - lastSyncTime < SYNC_COOLDOWN_MS) {
+        return;
+    }
+
+    try {
+        const { status } = await Contacts.getPermissionsAsync();
+        if (status !== "granted") {
+            return;
+        }
+
+        const dbContacts = await getAllContacts();
+        if (dbContacts.length === 0) {
+            return;
+        }
+
+        const { data: deviceContacts } = await Contacts.getContactsAsync({
+            fields: [
+                Contacts.Fields.FirstName,
+                Contacts.Fields.LastName,
+                Contacts.Fields.PhoneNumbers,
+            ],
+        });
+
+        if (!deviceContacts || deviceContacts.length === 0) {
+            return;
+        }
+
+        // Build mapping of normalizedPhone -> { contactId, name }
+        const phoneToContactMap = new Map<string, { contactId: string; name: string }>();
+
+        for (const contact of deviceContacts) {
+            if (!contact.phoneNumbers || !Array.isArray(contact.phoneNumbers)) {
+                continue;
+            }
+
+            const fullName = [contact.firstName, contact.lastName]
+                .filter(Boolean)
+                .join(" ")
+                .trim();
+
+            if (!fullName) continue;
+
+            for (const numberObj of contact.phoneNumbers) {
+                if (!numberObj || !numberObj.number) continue;
+
+                const normalized = numberObj.number.replace(/[^0-9+]/g, "");
+                if (!normalized) continue;
+
+                phoneToContactMap.set(normalized, {
+                    contactId: contact.id,
+                    name: fullName,
+                });
+            }
+        }
+
+        // Identify which DB contacts need updating
+        const updates: { phone: string; contactId: string; name: string }[] = [];
+
+        for (const dbContact of dbContacts) {
+            const match = phoneToContactMap.get(dbContact.phone);
+            if (match) {
+                // If contact_id or name changed, queue an update
+                if (dbContact.contact_id !== match.contactId || dbContact.name !== match.name) {
+                    updates.push({
+                        phone: dbContact.phone,
+                        contactId: match.contactId,
+                        name: match.name,
+                    });
+                }
+            }
+        }
+
+        if (updates.length > 0) {
+            await batchSyncDeviceContacts(updates);
+        }
+
+        lastSyncTime = now;
+    } catch (e) {
+        console.error("[SyncContacts] Failed to sync contacts:", e);
+    }
+}

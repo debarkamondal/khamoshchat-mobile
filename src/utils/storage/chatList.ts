@@ -41,7 +41,7 @@ export function subscribeToChatList(listener: ChatListListener): () => void {
 /**
  * Notify all chat list listeners of an update.
  */
-function notifyChatListListeners(): void {
+export function notifyChatListListeners(): void {
     chatListListeners.forEach(l => l());
 }
 

@@ -22,6 +22,7 @@ export interface Message {
     sender_id: string;
     created_at: number;
     status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
+    type: 'message' | 'system';
 }
 
 /**
@@ -172,6 +173,40 @@ export async function saveMessageWithAutoOpen(
         return id;
     } finally {
         // Only close if we opened it ourselves — don't close a DB the chat screen is using
+        if (!wasAlreadyOpen) {
+            await closeChatDatabase(chatId);
+        }
+    }
+}
+
+/**
+ * Saves a system message (e.g., "security info changed") to the chat database.
+ * Uses auto-open/close lifecycle so it works from any context.
+ */
+export async function saveSystemMessage(
+    chatId: string,
+    content: string
+): Promise<string> {
+    const wasAlreadyOpen = isDatabaseOpen(chatId);
+    const db = await openChatDatabase(chatId);
+
+    try {
+        const id = generateMessageId();
+        const created_at = Date.now();
+
+        await db.runAsync(
+            "INSERT INTO messages (id, content, sender_id, created_at, status, type) VALUES (?, ?, ?, ?, ?, ?)",
+            id,
+            content,
+            'system',
+            created_at,
+            'sent',
+            'system'
+        );
+
+        notifyListeners(chatId);
+        return id;
+    } finally {
         if (!wasAlreadyOpen) {
             await closeChatDatabase(chatId);
         }

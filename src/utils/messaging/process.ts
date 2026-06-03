@@ -7,7 +7,7 @@ import { Session } from '@/src/store/useSession';
 import { X3DHBundle, initReceiver, decryptMessage, getIdentityKey, PreKeyBundle } from '@/src/utils/crypto';
 import { receiveInitialMessage, receiveMessage } from './receive';
 import { apiRequest } from '../transport/api';
-import { saveContact, upsertChatThread } from '../storage';
+import { saveContact, upsertChatThread, updateContactBundle, saveSystemMessage } from '../storage';
 
 /**
  * Processes a raw MQTT message (already parsed from JSON).
@@ -65,6 +65,24 @@ export async function processIncomingMessage(
             }
         } catch (err) {
             console.error('Failed to resolve phone number for incoming initial message:', err);
+        }
+
+        // Compare identity key against stored value — detect key changes
+        // No need to clearSession here: the X3DH responder already established a fresh ratchet.
+        try {
+            const syncResult = await updateContactBundle(
+                senderUserId,
+                payload.identityKey,
+                null // picture already saved above via saveContact
+            );
+            if (syncResult?.keyChanged) {
+                await saveSystemMessage(
+                    senderUserId,
+                    '🔒 Security info has changed. Messages will use a new session.'
+                );
+            }
+        } catch (err) {
+            console.warn('[Process] Failed to update contact bundle for incoming message:', err);
         }
 
         return result.plaintext;

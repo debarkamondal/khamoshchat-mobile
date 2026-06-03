@@ -259,6 +259,12 @@ async function migrateDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
             updated_at INTEGER NOT NULL
         );
     `);
+
+    // Self-healing: add type column to messages table if it doesn't exist
+    try {
+        await db.execAsync("ALTER TABLE messages ADD COLUMN type TEXT DEFAULT 'message';");
+    } catch {}
+
     await db.execAsync('PRAGMA user_version = 1;');
 }
 
@@ -332,6 +338,17 @@ async function migratePrimaryDatabase(db: SQLite.SQLiteDatabase): Promise<void> 
     } catch {}
     try {
         await db.execAsync('ALTER TABLE contacts ADD COLUMN picture TEXT;');
+    } catch {}
+
+    // Self-healing: add bundle sync columns to contacts table if they don't exist
+    try {
+        await db.execAsync('ALTER TABLE contacts ADD COLUMN identity_key TEXT;');
+    } catch {}
+    try {
+        await db.execAsync('ALTER TABLE contacts ADD COLUMN identity_key_changed INTEGER DEFAULT 0;');
+    } catch {}
+    try {
+        await db.execAsync('ALTER TABLE contacts ADD COLUMN last_synced_at INTEGER;');
     } catch {}
 
     await db.execAsync('PRAGMA user_version = 1;');

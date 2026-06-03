@@ -11,6 +11,9 @@ export interface ContactMapping {
     contact_id: string | null;
     name: string | null;
     picture: string | null;
+    identity_key: string | null;
+    identity_key_changed: number;
+    last_synced_at: number | null;
     created_at: number;
 }
 
@@ -102,4 +105,79 @@ export async function batchSyncDeviceContacts(
             );
         }
     });
+}
+
+/** Bundle sync cooldown in milliseconds (15 minutes). */
+const SYNC_COOLDOWN_MS = 15 * 60 * 1000;
+
+/**
+ * Updates a contact's identity key and picture from a bundle sync.
+ * Detects identity key changes — first-time population (null → value) is NOT a change.
+ *
+ * @returns Whether the key or picture changed, or undefined if the contact was not found.
+ */
+export async function updateContactBundle(
+    userId: string,
+    identityKey: string,
+    picture: string | null
+): Promise<{ keyChanged: boolean; pictureChanged: boolean } | undefined> {
+    const db = await openPrimaryDatabase();
+    const now = Date.now();
+
+    // Read current values
+    const current = await db.getFirstAsync<{
+        identity_key: string | null;
+        picture: string | null;
+    }>(
+        'SELECT identity_key, picture FROM contacts WHERE user_id = ?',
+        userId
+    );
+
+    if (!current) return undefined;
+
+    const keyChanged = current.identity_key !== null && current.identity_key !== identityKey;
+    const pictureChanged = current.picture !== picture;
+
+    await db.runAsync(
+        `UPDATE contacts
+         SET identity_key = ?,
+             picture = COALESCE(?, contacts.picture),
+             identity_key_changed = CASE WHEN ? = 1 THEN 1 ELSE identity_key_changed END,
+             last_synced_at = ?
+         WHERE user_id = ?`,
+        identityKey,
+        picture,
+        keyChanged ? 1 : 0,
+        now,
+        userId
+    );
+
+    return { keyChanged, pictureChanged };
+}
+
+/**
+ * Resets the identity_key_changed flag for a contact.
+ * Called when the user dismisses the key-change banner.
+ */
+export async function acknowledgeKeyChange(userId: string): Promise<void> {
+    const db = await openPrimaryDatabase();
+    await db.runAsync(
+        'UPDATE contacts SET identity_key_changed = 0 WHERE user_id = ?',
+        userId
+    );
+}
+
+/**
+ * Checks whether a contact should be synced (15-minute cooldown).
+ * Returns true if the contact has never been synced or was last synced more than 15 minutes ago.
+ */
+export async function shouldSyncContact(userId: string): Promise<boolean> {
+    const db = await openPrimaryDatabase();
+    const row = await db.getFirstAsync<{ last_synced_at: number | null }>(
+        'SELECT last_synced_at FROM contacts WHERE user_id = ?',
+        userId
+    );
+
+    if (!row || row.last_synced_at === null) return true;
+    return Date.now() - row.last_synced_at > SYNC_COOLDOWN_MS;
 }

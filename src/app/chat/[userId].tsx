@@ -25,7 +25,8 @@ import {
 } from '@/src/utils/storage';
 import ChatBubble from "@/src/components/ChatBubble";
 import { ContactAvatar } from "@/src/components/ContactAvatar";
-import { getContactInfo } from "@/src/utils/storage/contacts";
+import { getContactInfo, acknowledgeKeyChange } from "@/src/utils/storage/contacts";
+import { syncContactBundle } from "@/src/utils/sync/bundleSync";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -52,6 +53,7 @@ export default function Chat() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [dbError, setDbError] = useState<string | null>(null);
   const [isUserNotFound, setIsUserNotFound] = useState(false);
+  const [showKeyChangeBanner, setShowKeyChangeBanner] = useState(false);
 
   useEffect(() => {
     if (Platform.OS === 'ios') return;
@@ -309,8 +311,28 @@ export default function Chat() {
         if (info && isMounted) {
           if (info.name) setName(info.name);
           if (info.picture) setPicture(info.picture);
-          return;
+
+          // Check for pre-existing unacknowledged key changes
+          if (info.identity_key_changed === 1) {
+            setShowKeyChangeBanner(true);
+          }
         }
+
+        // Fire-and-forget bundle sync (respects 15-min cooldown)
+        syncContactBundle(resolvedUUID)
+          .then((result) => {
+            if (!isMounted || !result) return;
+            if (result.keyChanged) setShowKeyChangeBanner(true);
+            if (result.pictureChanged) {
+              // Re-read updated picture from DB
+              getContactInfo(resolvedUUID).then((updated) => {
+                if (isMounted && updated?.picture) setPicture(updated.picture);
+              });
+            }
+          })
+          .catch((e) => console.warn('Bundle sync failed:', e));
+
+        return;
       }
 
       if (id) {
@@ -387,6 +409,31 @@ export default function Chat() {
       textAlign: 'center' as const,
       fontSize: 13,
     },
+    keyChangeBanner: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      backgroundColor: colors.surface,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.outlineVariant,
+      gap: 10,
+    },
+    keyChangeBannerText: {
+      flex: 1,
+      color: colors.onSurfaceVariant as string,
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    keyChangeDismiss: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    keyChangeDismissText: {
+      color: colors.primary as string,
+      fontSize: 13,
+      fontWeight: '600' as const,
+    },
   }));
 
   // Insets-dependent styles (memoized by insets)
@@ -414,6 +461,27 @@ export default function Chat() {
         </View>
         <StyledText style={styles.headerTitle}>{name || userId}</StyledText>
       </View>
+
+      {showKeyChangeBanner && (
+        <View style={themedStyles.keyChangeBanner}>
+          <Ionicons name="lock-closed" size={16} color={colors.onSurfaceVariant} />
+          <StyledText style={themedStyles.keyChangeBannerText}>
+            Security info changed for {name || 'this contact'}. Messages will use a new session.
+          </StyledText>
+          <Pressable
+            style={themedStyles.keyChangeDismiss}
+            onPress={() => {
+              setShowKeyChangeBanner(false);
+              if (resolvedUUID) {
+                acknowledgeKeyChange(resolvedUUID).catch(() => {});
+              }
+            }}
+            hitSlop={8}
+          >
+            <StyledText style={themedStyles.keyChangeDismissText}>Dismiss</StyledText>
+          </Pressable>
+        </View>
+      )}
 
       {dbError ? (
         <View style={themedStyles.dbErrorContainer}>
