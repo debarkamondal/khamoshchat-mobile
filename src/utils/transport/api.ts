@@ -1,4 +1,4 @@
-import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
+import LibsignalDezireModule from "expo-libsignal-dezire";
 import useSession from "@/src/store/useSession";
 import { toBase64, toBytes } from "@/src/utils/helpers/encoding";
 

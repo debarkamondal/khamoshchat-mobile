@@ -4,7 +4,7 @@
  */
 
 import { Session } from '@/src/store/useSession';
-import LibsignalDezireModule from '@/modules/libsignal-dezire/src/LibsignalDezireModule';
+import LibsignalDezireModule from 'expo-libsignal-dezire';
 
 import { fromBase64, toString } from '../helpers/encoding';
 import { saveMessageWithAutoOpen } from '../storage/messages';

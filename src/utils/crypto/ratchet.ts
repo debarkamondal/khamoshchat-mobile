@@ -3,8 +3,8 @@
  * Handles encryption/decryption with in-memory caching and persistence.
  */
 
-import LibsignalDezireModule from '@/modules/libsignal-dezire/src/LibsignalDezireModule';
-import { RatchetEncryptResult } from '@/modules/libsignal-dezire/src/LibsignalDezire.types';
+import LibsignalDezireModule from 'expo-libsignal-dezire';
+import { RatchetEncryptResult } from 'expo-libsignal-dezire';
 import {
     saveChatSession,
     loadChatSession,

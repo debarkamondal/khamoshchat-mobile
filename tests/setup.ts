@@ -34,7 +34,7 @@ jest.mock('expo-native-mqtt', () => {
 });
 
 // Mock libsignal-dezire (the Rust FFI module)
-jest.mock('@/modules/libsignal-dezire/src/LibsignalDezireModule', () => ({
+jest.mock('expo-libsignal-dezire', () => ({
   genKeyPair: jest.fn().mockResolvedValue({
     pubKey: new Uint8Array(32),
     privKey: new Uint8Array(32),

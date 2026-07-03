@@ -3,7 +3,7 @@
  * Handles generation and loading of one-time pre-keys.
  */
 
-import LibsignalDezireModule from '@/modules/libsignal-dezire/src/LibsignalDezireModule';
+import LibsignalDezireModule from 'expo-libsignal-dezire';
 import { getItemAsync, setItemAsync, AFTER_FIRST_UNLOCK } from 'expo-secure-store';
 import { toBase64, fromBase64 } from '../helpers/encoding';
 

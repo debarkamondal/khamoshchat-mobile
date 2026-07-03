@@ -3,7 +3,7 @@
  * Handles key exchange for establishing shared secrets.
  */
 
-import LibsignalDezireModule from '@/modules/libsignal-dezire/src/LibsignalDezireModule';
+import LibsignalDezireModule from 'expo-libsignal-dezire';
 import { fromBase64 } from '../helpers/encoding';
 import { Session } from '@/src/store/useSession';
 

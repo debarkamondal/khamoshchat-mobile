@@ -4,11 +4,9 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
-    "cargo-build-ios": "bun ./scripts/cargo-ios.ts",
-    "cargo-build-android": "bun ./scripts/cargo-android.ts",
-    "android": "bun ./scripts/cargo-android.ts && expo run:android",
-    "ios": "bun ./scripts/cargo-ios.ts --target='ios' && expo run:ios",
-    "ios-sim": "bun ./scripts/cargo-ios.ts --target='ios-sim' && expo run:ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "ios-sim": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "jest"
@@ -30,6 +28,7 @@
     "expo-google-native-oauth": "^0.1.1",
     "expo-haptics": "~55.0.9",
     "expo-image": "~55.0.6",
+    "expo-libsignal-dezire": "file:../expo-libsignal-dezire",
     "expo-linking": "~55.0.9",
     "expo-native-mqtt": "git+https://github.com/debarkamondal/expo-native-mqtt.git#1313ec7cfa3904f89b9759d9f4dc2ea281313aa8",
     "expo-notifications": "^55.0.14",

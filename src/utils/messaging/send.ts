@@ -19,8 +19,8 @@
 
 import useMqttStore from '@/src/store/useMqttStore';
 import { Session } from '@/src/store/useSession';
-import { RatchetEncryptResult } from '@/modules/libsignal-dezire/src/LibsignalDezire.types';
-import LibsignalDezireModule from '@/modules/libsignal-dezire/src/LibsignalDezireModule';
+import { RatchetEncryptResult } from 'expo-libsignal-dezire';
+import LibsignalDezireModule from 'expo-libsignal-dezire';
 
 import { toBase64, fromBase64, toBytes } from '../helpers/encoding';
 import {

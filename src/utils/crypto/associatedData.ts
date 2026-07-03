@@ -3,7 +3,7 @@
  * Consolidates the AD construction pattern used throughout messaging.
  */
 
-import LibsignalDezireModule from '@/modules/libsignal-dezire/src/LibsignalDezireModule';
+import LibsignalDezireModule from 'expo-libsignal-dezire';
 import { fromBase64 } from '../helpers/encoding';
 
 /**

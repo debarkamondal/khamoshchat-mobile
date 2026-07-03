@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { setItemAsync, getItemAsync, deleteItemAsync, AFTER_FIRST_UNLOCK } from "expo-secure-store";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { Alert } from "react-native";
-import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
+import LibsignalDezireModule from "expo-libsignal-dezire";
 
 type PhoneIdentity = {
   countryCode: string;

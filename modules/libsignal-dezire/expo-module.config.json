@@ -1,9 +1,0 @@
-{
-  "platforms": ["apple", "android", "web"],
-  "apple": {
-    "modules": ["LibsignalDezireModule"]
-  },
-  "android": {
-    "modules": ["expo.modules.libsignaldezire.LibsignalDezireModule"]
-  }
-}
