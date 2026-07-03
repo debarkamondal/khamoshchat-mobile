@@ -28,7 +28,7 @@
     "expo-google-native-oauth": "^0.1.1",
     "expo-haptics": "~55.0.9",
     "expo-image": "~55.0.6",
-    "expo-libsignal-dezire": "file:../expo-libsignal-dezire",
+    "expo-libsignal-dezire": "git+https://github.com/debarkamondal/expo-libsignal-dezire.git#e433c76cf9fde4865ac8c310cc9b944a1ebad9aa",
     "expo-linking": "~55.0.9",
     "expo-native-mqtt": "git+https://github.com/debarkamondal/expo-native-mqtt.git#1313ec7cfa3904f89b9759d9f4dc2ea281313aa8",
     "expo-notifications": "^55.0.14",
