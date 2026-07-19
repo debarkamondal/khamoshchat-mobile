@@ -3,7 +3,7 @@
  * Syncs device contact names and IDs with registered contacts in our database.
  */
 
-import * as Contacts from "expo-contacts";
+import { Contact, ContactField, getPermissionsAsync } from "expo-contacts";
 
 import { getAllContacts, batchSyncDeviceContacts } from "../storage/contacts";
 
@@ -22,7 +22,7 @@ export async function syncDeviceContacts(force = false): Promise<void> {
     }
 
     try {
-        const { status } = await Contacts.getPermissionsAsync();
+        const { status } = await getPermissionsAsync();
         if (status !== "granted") {
             return;
         }
@@ -32,13 +32,9 @@ export async function syncDeviceContacts(force = false): Promise<void> {
             return;
         }
 
-        const { data: deviceContacts } = await Contacts.getContactsAsync({
-            fields: [
-                Contacts.Fields.FirstName,
-                Contacts.Fields.LastName,
-                Contacts.Fields.PhoneNumbers,
-            ],
-        });
+        const deviceContacts = await Contact.getAllDetails(
+            [ContactField.FULL_NAME, ContactField.PHONES],
+        );
 
         if (!deviceContacts || deviceContacts.length === 0) {
             return;
@@ -48,21 +44,18 @@ export async function syncDeviceContacts(force = false): Promise<void> {
         const phoneToContactMap = new Map<string, { contactId: string; name: string }>();
 
         for (const contact of deviceContacts) {
-            if (!contact.phoneNumbers || !Array.isArray(contact.phoneNumbers)) {
+            if (!contact.phones || !Array.isArray(contact.phones)) {
                 continue;
             }
 
-            const fullName = [contact.firstName, contact.lastName]
-                .filter(Boolean)
-                .join(" ")
-                .trim();
+            const fullName = contact.fullName?.trim();
 
             if (!fullName) continue;
 
-            for (const numberObj of contact.phoneNumbers) {
-                if (!numberObj || !numberObj.number) continue;
+            for (const phone of contact.phones) {
+                if (!phone || !phone.number) continue;
 
-                const normalized = numberObj.number.replace(/[^0-9+]/g, "");
+                const normalized = phone.number.replace(/[^0-9+]/g, "");
                 if (!normalized) continue;
 
                 phoneToContactMap.set(normalized, {

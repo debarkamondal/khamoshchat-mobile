@@ -5,7 +5,7 @@ import { useTheme, useThemedStyles } from "@/src/hooks/useTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import * as Contacts from "expo-contacts";
+import { Contact, ContactField } from "expo-contacts";
 import { View, StyleSheet, FlatList, NativeScrollEvent, NativeSyntheticEvent, Pressable, KeyboardAvoidingView, Platform, Keyboard, Alert } from "react-native";
 import { sendInitialMessage, sendMessage } from '@/src/utils/messaging';
 import {
@@ -337,9 +337,10 @@ export default function Chat() {
 
       if (id) {
         try {
-          const data = await Contacts.getContactByIdAsync(id.split("/")[0]);
-          if (isMounted && data) {
-            setName(data.firstName + " " + (data.lastName || ""));
+          const contact = new Contact(id.split("/")[0]);
+          const details = await contact.getDetails([ContactField.FULL_NAME]);
+          if (isMounted && details) {
+            setName(details.fullName || "");
           }
         } catch (e) {
           console.warn("Failed to fetch contact by device ID:", e);

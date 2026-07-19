@@ -3,12 +3,12 @@
  * Fetches contacts from the device's address book.
  */
 
-import * as Contacts from "expo-contacts";
+import { Contact, ContactField, ContactsSortOrder, requestPermissionsAsync } from "expo-contacts";
 
 export type SplitContact = {
     id: string;
     firstName: string;
-    lastName: string | undefined;
+    lastName: string | null;
     label: string;
     number: string;
 };
@@ -18,43 +18,43 @@ export type SplitContact = {
  */
 export async function getContacts(): Promise<SplitContact[] | null> {
     const splitContacts: SplitContact[] = [];
-    const { status } = await Contacts.requestPermissionsAsync();
-    
+    const { status } = await requestPermissionsAsync();
+
     if (status !== "granted") {
         return splitContacts;
     }
 
-    const { data } = await Contacts.getContactsAsync({
-        fields: ["firstName", "lastName", "phoneNumbers"],
-        sort: "firstName",
-    });
-    
+    const contacts = await Contact.getAllDetails(
+        [ContactField.GIVEN_NAME, ContactField.FAMILY_NAME, ContactField.PHONES],
+        { sortOrder: ContactsSortOrder.GivenName },
+    );
+
     const seenNumbers = new Set<string>();
 
-    for (let i = 0; i < data.length; i++) {
-        const contact = data[i];
+    for (let i = 0; i < contacts.length; i++) {
+        const contact = contacts[i];
 
-        if (!contact.phoneNumbers || !Array.isArray(contact.phoneNumbers) || contact.phoneNumbers.length === 0) {
+        if (!contact.phones || !Array.isArray(contact.phones) || contact.phones.length === 0) {
             continue;
         }
 
-        for (let j = 0; j < contact.phoneNumbers.length; j++) {
-            const numbers = contact.phoneNumbers[j];
-            if (!numbers || !numbers.number) continue;
+        for (let j = 0; j < contact.phones.length; j++) {
+            const phone = contact.phones[j];
+            if (!phone || !phone.number) continue;
 
             // Normalize phone number to eliminate duplicates
-            const normalized = numbers.number.replace(/[^0-9+]/g, "");
+            const normalized = phone.number.replace(/[^0-9+]/g, "");
             if (!normalized) continue;
 
             if (seenNumbers.has(normalized)) continue;
             seenNumbers.add(normalized);
 
             splitContacts.push({
-                firstName: contact.firstName ?? (numbers.number as string),
-                lastName: contact.lastName,
+                firstName: contact.givenName ?? (phone.number as string),
+                lastName: contact.familyName,
                 id: contact.id + "/" + j,
-                number: numbers.number,
-                label: numbers.label ?? "mobile",
+                number: phone.number,
+                label: phone.label ?? "mobile",
             });
         }
     }
