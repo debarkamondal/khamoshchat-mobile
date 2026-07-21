@@ -21,6 +21,13 @@ const PRIMARY_CHAT_ID = '__primary__';
 const activeDatabases = new Map<string, SQLite.SQLiteDatabase>();
 let primaryDb: SQLite.SQLiteDatabase | null = null;
 
+/**
+ * In-flight open promises — coalesces concurrent callers so only one
+ * native connection is created at a time for a given database.
+ */
+let primaryDbPending: Promise<SQLite.SQLiteDatabase> | null = null;
+const chatDbPending = new Map<string, Promise<SQLite.SQLiteDatabase>>();
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -71,6 +78,7 @@ async function isConnectionHealthy(db: SQLite.SQLiteDatabase): Promise<boolean> 
 /**
  * Opens a per-chat database with encryption.
  * Safe to call multiple times — returns the cached connection.
+ * Concurrent calls for the same chatId are coalesced into a single open.
  *
  * @throws DatabaseKeyMismatchError  — PRAGMA key does not match the DB file
  * @throws DatabaseCorruptedError    — DB file is unreadable
@@ -80,20 +88,35 @@ export async function openChatDatabase(chatId: string): Promise<SQLite.SQLiteDat
         return activeDatabases.get(chatId)!;
     }
 
-    const { key, dbId } = await getOrCreateDatabaseCredentials(chatId);
-
-    let db: SQLite.SQLiteDatabase;
-    try {
-        db = await SQLite.openDatabaseAsync(`${dbId}.db`, {}, Paths.document.uri);
-    } catch (e) {
-        throw new DatabaseCorruptedError(chatId, e);
+    // Coalesce concurrent callers
+    const pending = chatDbPending.get(chatId);
+    if (pending) {
+        return pending;
     }
 
-    await applyKeyAndVerify(db, key, chatId);
-    await migrateDatabase(db);
+    const openPromise = (async () => {
+        const { key, dbId } = await getOrCreateDatabaseCredentials(chatId);
 
-    activeDatabases.set(chatId, db);
-    return db;
+        let db: SQLite.SQLiteDatabase;
+        try {
+            db = await SQLite.openDatabaseAsync(`${dbId}.db`, {}, Paths.document.uri);
+        } catch (e) {
+            throw new DatabaseCorruptedError(chatId, e);
+        }
+
+        await applyKeyAndVerify(db, key, chatId);
+        await migrateDatabase(db);
+
+        activeDatabases.set(chatId, db);
+        return db;
+    })();
+
+    chatDbPending.set(chatId, openPromise);
+    try {
+        return await openPromise;
+    } finally {
+        chatDbPending.delete(chatId);
+    }
 }
 
 /**
@@ -138,6 +161,7 @@ export function requireChatDatabase(chatId: string): SQLite.SQLiteDatabase {
 /**
  * Opens the primary database with encryption and WAL mode.
  * Safe to call multiple times — returns the cached connection.
+ * Concurrent calls are coalesced into a single open.
  *
  * @throws DatabaseKeyMismatchError  — PRAGMA key does not match the DB file
  * @throws DatabaseCorruptedError    — DB file is unreadable
@@ -147,20 +171,34 @@ export async function openPrimaryDatabase(): Promise<SQLite.SQLiteDatabase> {
         return primaryDb;
     }
 
-    const { key, dbId } = await getOrCreateDatabaseCredentials(PRIMARY_CHAT_ID);
-
-    let db: SQLite.SQLiteDatabase;
-    try {
-        db = await SQLite.openDatabaseAsync(`${dbId}.db`, {}, Paths.document.uri);
-    } catch (e) {
-        throw new DatabaseCorruptedError(PRIMARY_CHAT_ID, e);
+    // Coalesce concurrent callers — if an open is already in flight, join it
+    if (primaryDbPending) {
+        return primaryDbPending;
     }
 
-    await applyKeyAndVerify(db, key, PRIMARY_CHAT_ID);
-    await migratePrimaryDatabase(db);
+    const openPromise = (async () => {
+        const { key, dbId } = await getOrCreateDatabaseCredentials(PRIMARY_CHAT_ID);
 
-    primaryDb = db;
-    return db;
+        let db: SQLite.SQLiteDatabase;
+        try {
+            db = await SQLite.openDatabaseAsync(`${dbId}.db`, {}, Paths.document.uri);
+        } catch (e) {
+            throw new DatabaseCorruptedError(PRIMARY_CHAT_ID, e);
+        }
+
+        await applyKeyAndVerify(db, key, PRIMARY_CHAT_ID);
+        await migratePrimaryDatabase(db);
+
+        primaryDb = db;
+        return db;
+    })();
+
+    primaryDbPending = openPromise;
+    try {
+        return await openPromise;
+    } finally {
+        primaryDbPending = null;
+    }
 }
 
 

@@ -1,6 +1,6 @@
 import * as SplashScreen from "expo-splash-screen";
 import { Stack } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AppState, AppStateStatus, Alert, Platform } from "react-native";
 import useSession from "./../store/useSession";
 import { ThemeProvider, useTheme } from "@/src/hooks/useTheme";
@@ -45,19 +45,24 @@ function InnerLayout({ isAuthenticated }: { isAuthenticated: boolean }) {
   const session = useSession();
   const hasMessagingIdentity = Boolean(session.userId);
   const topic = hasMessagingIdentity ? session.userId : "";
+  const [isDbReady, setIsDbReady] = useState(false);
 
   // Consolidated hook handles connection + store sync + message listening
-  useMqtt(isAuthenticated && hasMessagingIdentity ? topic! : "");
+  useMqtt(isAuthenticated && hasMessagingIdentity && isDbReady ? topic! : "");
 
   // Handles push notification permissions, tokens, and local scheduling
-  useNotifications(isAuthenticated);
+  useNotifications(isAuthenticated && isDbReady);
 
   // Open primary database on auth, with proper error handling
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      setIsDbReady(false);
+      return;
+    }
 
     openPrimaryDatabase()
       .then(() => {
+        setIsDbReady(true);
         // Prune stale inbox/outbox entries (processed/failed older than 7 days)
         pruneInbox().catch(e =>
           console.warn('Failed to prune inbox:', e)
@@ -83,7 +88,7 @@ function InnerLayout({ isAuthenticated }: { isAuthenticated: boolean }) {
   // Re-validate DB connections and retry failed inbox entries on foreground resume
   useEffect(() => {
     const handleAppStateChange = async (nextState: AppStateStatus) => {
-      if (nextState === 'active' && isAuthenticated) {
+      if (nextState === 'active' && isAuthenticated && isDbReady) {
         try {
           await reopenAllDatabases();
         } catch (e) {
@@ -107,7 +112,7 @@ function InnerLayout({ isAuthenticated }: { isAuthenticated: boolean }) {
 
     const sub = AppState.addEventListener('change', handleAppStateChange);
     return () => sub.remove();
-  }, [isAuthenticated, session]);
+  }, [isAuthenticated, isDbReady, session]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
