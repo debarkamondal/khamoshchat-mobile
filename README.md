@@ -1,8 +1,8 @@
 
 # Khamosh 🤫!!!
 
-[![Expo SDK](https://img.shields.io/badge/Expo_SDK-55-blue?logo=expo)](https://expo.dev)
-[![React Native](https://img.shields.io/badge/React_Native-0.83-61DAFB?logo=react)](https://reactnative.dev)
+[![Expo SDK](https://img.shields.io/badge/Expo_SDK-57-blue?logo=expo)](https://expo.dev)
+[![React Native](https://img.shields.io/badge/React_Native-0.86-61DAFB?logo=react)](https://reactnative.dev)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-orange.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20Android-lightgrey)]()
 [![Signal Protocol](https://img.shields.io/badge/Encryption-Signal_Protocol-green?logo=signal)](https://signal.org/docs/)
@@ -23,9 +23,11 @@ Built with ❤️ in **India**, for the **world**.
 ### Current
 - [x] One-to-one: text messages *(partially working — actively under development)*
 - [x] End-to-end encryption via Signal Protocol (X3DH + Double Ratchet)
-- [x] Encrypted local storage (SQLCipher)
-- [x] Contact syncing
+- [x] Encrypted local storage (SQLCipher via `expo-sqlite`)
+- [x] Contact syncing & bundle synchronization
+- [x] Key change notifications & system message rendering
 - [x] Dark & light theme support
+- [x] Automated Jest unit testing suite
 
 ### Roadmap
 - [ ] Voice notes
@@ -41,14 +43,15 @@ Built with ❤️ in **India**, for the **world**.
 
 | Layer | Technology |
 |---|---|
-| **Framework** | [Expo](https://expo.dev) (SDK 55) with [Expo Router](https://docs.expo.dev/router/introduction/) |
-| **UI** | React Native 0.83, React 19 with Reanimated animations |
-| **State Management** | [Zustand](https://github.com/pmndrs/zustand) |
+| **Framework** | [Expo](https://expo.dev) (SDK 57) with [Expo Router](https://docs.expo.dev/router/introduction/) |
+| **UI** | React Native 0.86, React 19.2 with Reanimated 4.5 animations |
+| **State Management** | [Zustand](https://github.com/pmndrs/zustand) with SecureStore persistence |
 | **Crypto** | [Signal Protocol](https://signal.org/docs/) — X3DH, Double Ratchet, VXEdDSA |
-| **Native Crypto Module** | Rust (via [libsignal-dezire](https://github.com/debarkamondal/libsignal-dezire) submodule) |
-| **Transport** | MQTT over TLS |
+| **Native Crypto Module** | [expo-libsignal-dezire](https://github.com/debarkamondal/expo-libsignal-dezire) (Rust C-FFI native module) |
+| **Transport** | MQTT over TLS (via `expo-native-mqtt`) |
 | **Local Database** | [expo-sqlite](https://docs.expo.dev/versions/latest/sdk/sqlite/) with SQLCipher encryption |
 | **Secure Storage** | [expo-secure-store](https://docs.expo.dev/versions/latest/sdk/securestore/) for key material |
+| **Testing** | Jest (`jest-expo`), React Native Testing Library |
 
 ---
 
@@ -56,6 +59,8 @@ Built with ❤️ in **India**, for the **world**.
 
 ```
 khamoshchat-mobile/
+├── .github/
+│   └── workflows/            # GitHub Actions workflows (e.g. build-android.yml)
 ├── src/
 │   ├── app/                  # Expo Router screens & layouts
 │   │   ├── (tabs)/           # Tab-based navigation (home, settings)
@@ -70,21 +75,18 @@ khamoshchat-mobile/
 │   ├── hooks/                # Custom React hooks (theming, etc.)
 │   ├── store/                # Zustand state stores
 │   ├── utils/
-│   │   ├── crypto/           # Signal protocol implementation
-│   │   │   ├── x3dh.ts       # X3DH key agreement
-│   │   │   ├── ratchet.ts    # Double Ratchet algorithm
-│   │   │   └── ...
-│   │   ├── transport/        # MQTT client & messaging transport
-│   │   ├── storage/          # SQLite database layer (SQLCipher)
-│   │   ├── messaging/        # Message encoding & handling
+│   │   ├── crypto/           # Signal protocol implementation (x3dh, ratchet, etc.)
+│   │   ├── transport/        # MQTT client & messaging transport API
+│   │   ├── storage/          # SQLite database layer (SQLCipher) & connection coalescing
+│   │   ├── messaging/        # Message encoding, send/receive handlers
 │   │   └── helpers/          # Utility functions
 │   ├── assets/               # Images, fonts, and static assets
 │   └── polyfills/            # Platform polyfills
-├── modules/
-│   └── libsignal-dezire/     # Expo native module (Rust → native bridge)
-├── libsignal-dezire/         # Git submodule — Rust crypto library
-├── scripts/                  # Cargo build scripts for iOS & Android
-└── app.json                  # Expo configuration
+├── tests/                    # Unit testing suite
+│   ├── setup.ts              # Jest mocks & environment configuration
+│   └── store/                # Zustand store tests
+├── app.config.ts             # Expo app configuration & plugins
+└── eas.json                  # Expo Application Services build configuration
 ```
 
 ---
@@ -113,37 +115,35 @@ cd khamoshchat-mobile
 bun install
 ```
 
-### 3. (Optional) Clone the native crypto submodule
-
-The prebuilt binaries for the native crypto module ([libsignal-dezire](https://github.com/debarkamondal/libsignal-dezire)) are already included in the repository, so this step is optional. If you want to build the Rust crypto library from source (requires a **Rust toolchain** with cross-compilation targets), initialize the submodule:
+### 3. Build & run the dev client
 
 ```bash
-git submodule update --init --recursive
+bun android    # Run on Android emulator/device
+bun ios        # Run on iOS device
+bun ios-sim    # Run on iOS simulator
+bun start      # Start Expo development server
 ```
 
-### 4. Build & run the dev client
+---
 
-**If you skipped step 3** (using the prebuilt binaries — most users):
+## Testing
+
+The project uses **Jest** with `jest-expo` and React Native Testing Library for unit testing.
 
 ```bash
-bunx expo run:android    # Android
-bunx expo run:ios        # iOS
+# Run the unit test suite
+bun run test
 ```
 
-**If you cloned the submodule** (building native module from source):
+---
 
-```bash
-bun android      # Build native module + run on Android
-bun ios-sim      # Build native module + run on iOS Simulator
-bun ios          # Build native module + run on iOS device
-```
+## CI/CD & Automated Builds
 
-You can also compile the native binaries without launching the app:
+The repository includes GitHub Actions workflows (`.github/workflows/build-android.yml`) for automated APK generation:
 
-```bash
-bun cargo-build-android   # Compile for Android
-bun cargo-build-ios       # Compile for iOS
-```
+- **Triggers**: On publishing a new GitHub release or via manual `workflow_dispatch`.
+- **EAS Local Build**: Uses EAS CLI locally in GitHub Actions to build standalone Android APKs without requiring Expo cloud credits.
+- **Artifacts**: Automatically attaches generated `.apk` binaries to GitHub Releases and uploads workflow build artifacts.
 
 ---
 
@@ -155,7 +155,7 @@ The encryption layer follows the [Signal Protocol specification](https://signal.
 - **Double Ratchet** — Forward & backward secrecy for every message
 - **VXEdDSA** — For signing & authentication
 
-Cryptographic operations are handled by a custom Rust library ([libsignal-dezire](https://github.com/debarkamondal/libsignal-dezire)) exposed to React Native as an Expo native module.
+Cryptographic operations are executed natively via `expo-libsignal-dezire`, an Expo native module wrapping high-performance Rust C-FFI bindings.
 
 ---
 
@@ -175,7 +175,7 @@ This project stands on the shoulders of some incredible open-source work:
 - **[Expo](https://expo.dev)** — for making cross-platform React Native development a joy
 - **[VerneMQ](https://vernemq.com/)** — for a rock-solid, scalable MQTT broker
 - **[Zustand](https://github.com/pmndrs/zustand)** — for delightfully simple state management
-- **[mqtt.js](https://github.com/mqttjs/MQTT.js)** — for the MQTT client that keeps everything connected
+- **[expo-libsignal-dezire](https://github.com/debarkamondal/expo-libsignal-dezire)** — for native Rust Signal protocol FFI bindings
 ---
 
 ## License
@@ -183,3 +183,4 @@ This project stands on the shoulders of some incredible open-source work:
 This project is licensed under the **GNU Affero General Public License v3.0 (AGPLv3)** — see the [LICENSE](LICENSE) file for details.
 
 **TL;DR:** You're free to use, modify, and distribute this software, but the source code must remain free and open source. If you run a modified version on a server, you must share the source. Because privacy should be everyone's right, not just a feature 🤫.
+

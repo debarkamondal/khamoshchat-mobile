@@ -4,18 +4,19 @@ This document provides guidance for AI coding agents working in this codebase.
 
 ## Project Overview
 
-KhamoshChat is a React Native mobile messaging app built with Expo SDK 54.
-It uses the file-based routing system (expo-router) and includes a native Rust
-module for Signal protocol cryptography (libsignal-dezire).
+KhamoshChat is a React Native mobile messaging app built with Expo SDK 57.
+It uses the file-based routing system (`expo-router`) and integrates native Rust
+Signal protocol cryptography via the `expo-libsignal-dezire` package.
 
 ## Technology Stack
 
-- **Runtime**: Expo SDK 54 with React 19.1 and React Native 0.81
+- **Runtime**: Expo SDK 57 with React 19.2 and React Native 0.86
 - **Package Manager**: Bun (use `bun` for all package operations)
-- **Routing**: expo-router v6 (file-based routing in `src/app/`)
-- **State Management**: Zustand with expo-secure-store persistence
+- **Routing**: expo-router v57 (file-based routing in `src/app/`)
+- **State Management**: Zustand with `expo-secure-store` persistence
 - **Language**: TypeScript with strict mode enabled
-- **Native Code**: Expo modules with Rust FFI (libsignal-dezire)
+- **Native Code**: Native Expo modules with Rust FFI (`expo-libsignal-dezire`, `expo-native-mqtt`)
+- **Testing**: Jest with `jest-expo` and React Native Testing Library
 
 ## Build/Lint/Test Commands
 
@@ -26,20 +27,14 @@ bun ios-sim                  # Build and run on iOS simulator
 bun ios                      # Build and run on iOS device
 bun android                  # Build and run on Android
 
-# Linting
+# Testing & Linting
+bun run test                 # Run Jest unit test suite
 bun lint                     # Run ESLint (expo lint)
-
-# Native module builds
-bun cargo-build-ios          # Build Rust library for iOS
-bun cargo-build-android      # Build Rust library for Android
 
 # Package management
 bun install                  # Install dependencies
 bun add <package>            # Add a package
 ```
-
-Note: No test framework is currently configured. If adding tests, use Jest
-with `bun test` or configure expo testing utilities.
 
 ## Project Structure
 
@@ -54,11 +49,14 @@ src/
   hooks/                  # Custom hooks (useTheme, etc.)
   store/                  # Zustand stores
   static/                 # Static data (colors, constants)
-  utils/                  # Utility functions
+  utils/                  # Utility functions (crypto, transport, storage, messaging)
   assets/                 # Images, fonts
   polyfills/              # Platform polyfills
-modules/
-  libsignal-dezire/       # Native Expo module (Rust FFI)
+tests/                    # Jest testing suite
+  setup.ts                # Test environment & mock setup
+  store/                  # Store unit tests
+.github/
+  workflows/              # GitHub Actions (build-android.yml)
 ```
 
 ## Code Style Guidelines
@@ -204,17 +202,17 @@ const styles = {
 
 ### Native Modules
 
-The `libsignal-dezire` module provides cryptographic operations:
+The `expo-libsignal-dezire` package provides cryptographic operations:
 
 ```typescript
-import LibsignalDezireModule from "@/modules/libsignal-dezire/src/LibsignalDezireModule";
+import LibsignalDezireModule from "expo-libsignal-dezire";
 
 const keypair = await LibsignalDezireModule.genKeyPair();
 const signature = await LibsignalDezireModule.vxeddsaSign(key, message);
 ```
 
    b. **Double Ratchet**: Ongoing messaging encryption
-      - Uses `RatchetSession` (TS) wrapping `libsignal-dezire` (Rust FFI).
+      - Uses `RatchetSession` (TS) wrapping `expo-libsignal-dezire` (Rust FFI).
       - Handles `ratchetInitSender`, `ratchetInitReceiver`, `ratchetEncrypt`, `ratchetDecrypt`.
       - Manages opaque pointers to Rust `RatchetState` in native maps (`ratchetSessions`).
 
@@ -235,9 +233,9 @@ Use `Stack.Protected` for conditional route guards based on auth state.
 - Use `expo-secure-store` for sensitive data persistence
 - Avoid direct console.log in production code
 
-## Native Module Details (libsignal-dezire)
+## Native Module Details (expo-libsignal-dezire)
 
-The native module acts as a bridge to a Rust C-FFI library for Signal Protocol operations.
+The native module package acts as a bridge to a Rust C-FFI library for Signal Protocol operations.
 
 ### Key Features
 1. **X3DH**:
@@ -261,13 +259,15 @@ The native module acts as a bridge to a Rust C-FFI library for Signal Protocol o
 
 ## Testing & Verification
 
-No automated test suite is currently set up for the UI.
-- **Unit Tests**: Rust library has internal tests (`cargo test`).
-- **Integration**: Use the verification scripts in `src/utils/` (e.g., `verifyRatchet.ts`) to test crypto flows.
+Automated unit tests are written with **Jest** and **React Native Testing Library**.
+
+- **Unit Tests**: Located in `tests/store/` (e.g. `useSession.test.ts`, `useMqttStore.test.ts`) and configured with `tests/setup.ts`.
+- **Run Tests**: `bun run test`
+- **Integration**: Verification scripts in `src/utils/` (e.g., `verifyRatchet.ts`) test crypto flows.
 - **Manual**: Run the app on simulator/device and verify chat flows.
 
-```typescript
-// Example verification
-import { verifyRatchet } from "@/src/utils/verifyRatchet";
-verifyRatchet(); // Logs result to console
-```
+## CI/CD Pipeline
+
+Automated Android APK builds are handled via GitHub Actions in `.github/workflows/build-android.yml`.
+- Runs local EAS builds on Ubuntu runners for releases or manual triggers (`workflow_dispatch`).
+- Outputs standalone `khamoshchat-*.apk` binaries attached to releases.

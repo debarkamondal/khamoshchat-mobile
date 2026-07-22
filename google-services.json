@@ -14,6 +14,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "822771804895-n06s69kg6kbrq6vso968v9l699k1sgfc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "in.dkmondal.kchat",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "822771804895-pnvb74ooamf0nabiio9p2ud9ibsb96r5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "in.dkmondal.kchat",
+            "certificate_hash": "de93bae55ef2a4fcdb6df3073333e78b23a13cc8"
+          }
+        },
+        {
           "client_id": "822771804895-blggkiescmpvk1qp3qc0vdj2jdtel8lg.apps.googleusercontent.com",
           "client_type": 3
         }
