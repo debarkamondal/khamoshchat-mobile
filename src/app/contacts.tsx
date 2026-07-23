@@ -150,7 +150,8 @@ export default function Contacts() {
             <Pressable
               onPress={() => {
                 const phone = item.number.replace(/[^0-9+]/g, "");
-                router.replace({ pathname: "/chat/[userId]", params: { userId: phone, id: item.id } });
+                const fullName = [item.firstName, item.lastName].filter(Boolean).join(" ");
+                router.replace({ pathname: "/chat/[userId]", params: { userId: phone, id: item.id, name: fullName } });
               }}
               style={({ pressed }) => [
                 themedStyles.pressableCard,

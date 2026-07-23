@@ -84,7 +84,7 @@ export default function Chat() {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   }, []);
 
-  const { userId, id }: { userId: string; id: string } = useLocalSearchParams();
+  const { userId, id, name: initialName }: { userId: string; id?: string; name?: string } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const session = useSession();
@@ -114,14 +114,13 @@ export default function Chat() {
   }, [userId]);
 
   useEffect(() => {
-    if (!resolvedUUID) {
-      setChatMessages([]);
-      return;
-    }
-
     let isMounted = true;
 
     const initChat = async (attempt = 0) => {
+      if (!resolvedUUID) {
+        if (isMounted) setChatMessages([]);
+        return;
+      }
       try {
         await openChatDatabase(resolvedUUID);
         if (!isMounted) return;
@@ -161,7 +160,9 @@ export default function Chat() {
     return () => {
       isMounted = false;
       unsubscribe();
-      closeChatDatabase(resolvedUUID).catch(() => { });
+      if (resolvedUUID) {
+        closeChatDatabase(resolvedUUID).catch(() => { });
+      }
     };
   }, [resolvedUUID]);
 
@@ -177,6 +178,7 @@ export default function Chat() {
         session,
         recipientIdentifier: userId, // phone number
         message: msg,
+        name: initialName || name,
         initSender: (userIdParam, sharedSecret, receiverPub, identityKey, deviceId) =>
           initSender(userIdParam, sharedSecret, receiverPub, identityKey, deviceId),
         encrypt: (userIdParam, plaintext, ad) => encryptMessage(userIdParam, plaintext, ad),

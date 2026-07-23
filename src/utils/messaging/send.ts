@@ -41,6 +41,7 @@ import { buildTopic, publishMessage } from '../transport/mqtt';
 import { x3dhInitiator, PreKeyBundle, clearSession } from '../crypto';
 import { constructSenderAD } from '../crypto/associatedData';
 import { apiRequest } from '../transport/api';
+import { syncDeviceContacts } from '../sync/contactSync';
 
 // ===== Type Definitions =====
 
@@ -48,6 +49,7 @@ type SendInitialMessageParams = {
     session: Session;
     recipientIdentifier: string;
     message: string;
+    name?: string;
     initSender: (
         userId: string,
         sharedSecret: Uint8Array,
@@ -117,6 +119,7 @@ export async function sendInitialMessage({
     session,
     recipientIdentifier,
     message,
+    name,
     initSender,
     encrypt,
 }: SendInitialMessageParams): Promise<{ userId: string }> {
@@ -213,7 +216,8 @@ export async function sendInitialMessage({
     // 8. On successful publish, persist everything to DB!
     try {
         // Save phone <-> UUID mapping
-        await saveContact(resolvedPhone, resolvedUserId, preKeyBundle.picture);
+        await saveContact(resolvedPhone, resolvedUserId, preKeyBundle.picture, name);
+        syncDeviceContacts().catch(e => console.warn('Failed to sync device contacts after initial message:', e));
 
         // Save plaintext message directly as 'sent'
         const messageId = await saveMessageWithAutoOpen(resolvedUserId, {

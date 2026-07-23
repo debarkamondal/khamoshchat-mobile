@@ -6,6 +6,7 @@
 import { Contact, ContactField, getPermissionsAsync } from "expo-contacts";
 
 import { getAllContacts, batchSyncDeviceContacts } from "../storage/contacts";
+import { notifyChatListListeners } from "../storage/chatList";
 
 // Store last sync time in memory to debounce sync queries
 let lastSyncTime = 0;
@@ -17,9 +18,6 @@ const SYNC_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
  */
 export async function syncDeviceContacts(force = false): Promise<void> {
     const now = Date.now();
-    if (!force && now - lastSyncTime < SYNC_COOLDOWN_MS) {
-        return;
-    }
 
     try {
         const { status } = await getPermissionsAsync();
@@ -32,9 +30,15 @@ export async function syncDeviceContacts(force = false): Promise<void> {
             return;
         }
 
-        const deviceContacts = await Contact.getAllDetails(
-            [ContactField.FULL_NAME, ContactField.PHONES],
-        );
+        const hasUnnamedContacts = dbContacts.some((c) => !c.name);
+        if (!force && !hasUnnamedContacts && now - lastSyncTime < SYNC_COOLDOWN_MS) {
+            return;
+        }
+
+        const deviceContacts = await Contact.getAllDetails([
+            ContactField.FULL_NAME,
+            ContactField.PHONES,
+        ]);
 
         if (!deviceContacts || deviceContacts.length === 0) {
             return;
@@ -49,7 +53,6 @@ export async function syncDeviceContacts(force = false): Promise<void> {
             }
 
             const fullName = contact.fullName?.trim();
-
             if (!fullName) continue;
 
             for (const phone of contact.phones) {
@@ -84,6 +87,7 @@ export async function syncDeviceContacts(force = false): Promise<void> {
 
         if (updates.length > 0) {
             await batchSyncDeviceContacts(updates);
+            notifyChatListListeners();
         }
 
         lastSyncTime = now;
@@ -91,3 +95,4 @@ export async function syncDeviceContacts(force = false): Promise<void> {
         console.error("[SyncContacts] Failed to sync contacts:", e);
     }
 }
+

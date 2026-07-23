@@ -8,6 +8,7 @@ import { X3DHBundle, initReceiver, decryptMessage, getIdentityKey, PreKeyBundle 
 import { receiveInitialMessage, receiveMessage } from './receive';
 import { apiRequest } from '../transport/api';
 import { saveContact, upsertChatThread, updateContactBundle, saveSystemMessage } from '../storage';
+import { syncDeviceContacts } from '../sync/contactSync';
 
 /**
  * Processes a raw MQTT message (already parsed from JSON).
@@ -62,6 +63,7 @@ export async function processIncomingMessage(
             if (bundle && bundle.phone) {
                 await saveContact(bundle.phone, senderUserId, bundle.picture);
                 await upsertChatThread(senderUserId, result.plaintext, bundle.phone);
+                syncDeviceContacts().catch(e => console.warn('Failed to sync device contacts after incoming message:', e));
             }
         } catch (err) {
             console.error('Failed to resolve phone number for incoming initial message:', err);

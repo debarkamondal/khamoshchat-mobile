@@ -18,22 +18,24 @@ export interface ContactMapping {
 }
 
 /**
- * Saves or updates a mapping between phone number and UUID, along with optional server picture.
+ * Saves or updates a mapping between phone number and UUID, along with optional server picture and contact name.
  */
-export async function saveContact(phone: string, userId: string, picture?: string): Promise<void> {
+export async function saveContact(phone: string, userId: string, picture?: string, name?: string): Promise<void> {
     const db = await openPrimaryDatabase();
     const now = Date.now();
 
     await db.runAsync(
-        `INSERT INTO contacts (phone, user_id, picture, created_at)
-         VALUES (?, ?, ?, ?)
+        `INSERT INTO contacts (phone, user_id, picture, name, created_at)
+         VALUES (?, ?, ?, ?, ?)
          ON CONFLICT(phone) DO UPDATE SET
              user_id = excluded.user_id,
              picture = COALESCE(excluded.picture, contacts.picture),
+             name = COALESCE(excluded.name, contacts.name),
              created_at = excluded.created_at`,
         phone,
         userId,
         picture || null,
+        name || null,
         now
     );
 }

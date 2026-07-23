@@ -55,8 +55,11 @@ function InnerLayout({ isAuthenticated }: { isAuthenticated: boolean }) {
 
   // Open primary database on auth, with proper error handling
   useEffect(() => {
+    let isMounted = true;
     if (!isAuthenticated) {
-      setIsDbReady(false);
+      Promise.resolve().then(() => {
+        if (isMounted) setIsDbReady(false);
+      });
       return;
     }
 
